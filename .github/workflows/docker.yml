@@ -14,5 +14,5 @@ on:
 
 jobs:
   docker:
-    uses: nezuchan/workflows/.github/workflows/docker-build.yml@main
+    uses: frutbits/workflows/.github/workflows/build-docker-image.yml@main
     secrets: inherit
