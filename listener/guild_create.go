@@ -7,24 +7,11 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
-	"github.com/disgoorg/snowflake/v2"
 	"github.com/streadway/amqp"
 	"github.com/xinny/gateway/common"
 	"github.com/xinny/gateway/lib"
 	"github.com/xinny/gateway/redis"
 )
-
-type guildChannel interface {
-	GuildID() snowflake.ID
-}
-
-type extGuildChannel struct {
-	discord.GuildChannel
-}
-
-func (e extGuildChannel) GuildID(id snowflake.ID) snowflake.ID {
-	return id
-}
 
 type GuildCreateListener struct {
 	client lib.GatewayClient
