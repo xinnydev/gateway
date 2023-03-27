@@ -1,0 +1,72 @@
+package broker
+
+import (
+	"log"
+	"time"
+
+	"github.com/streadway/amqp"
+)
+
+type Broker struct {
+	Conn         *amqp.Connection
+	Channel      *amqp.Channel
+	retryAttempt int
+}
+
+func (b *Broker) Publish() {
+	if b.Conn.IsClosed() {
+
+	}
+}
+
+func NewBroker(amqpURI string) *Broker {
+	b := &Broker{}
+	var err error
+
+	for {
+		b.Conn, err = amqp.DialConfig(amqpURI, amqp.Config{
+			Dial: amqp.DefaultDial(time.Second * 5),
+		})
+		if err == nil {
+			break
+		}
+		log.Printf("Failed to connect to AMQP broker. Retrying in 5 seconds...")
+		time.Sleep(5 * time.Second)
+	}
+
+	b.Channel, err = b.Conn.Channel()
+	if err != nil {
+		log.Fatalf("Failed to open channel: %s", err)
+	}
+
+	go b.handleReconnect(amqpURI)
+
+	return b
+}
+
+func (b *Broker) handleReconnect(amqpURI string) {
+	onClose := b.Conn.NotifyClose(make(chan *amqp.Error))
+	for {
+		<-onClose
+		log.Printf("AMQP connection lost. Reconnecting...")
+		for {
+			if b.retryAttempt >= 3 {
+				panic("couldn't reconnect to amqp broker after 3 attempts")
+			}
+			conn, err := amqp.DialConfig(amqpURI, amqp.Config{
+				Dial: amqp.DefaultDial(time.Second * 5),
+			})
+			b.retryAttempt += 1
+			if err == nil {
+				b.Conn = conn
+				b.retryAttempt = 0
+				break
+			}
+			log.Printf("Failed to connect to AMQP broker. Retrying in 5 seconds...")
+			time.Sleep(5 * time.Second)
+		}
+
+		b.Channel, _ = b.Conn.Channel()
+		b.handleReconnect(amqpURI)
+	}
+}
