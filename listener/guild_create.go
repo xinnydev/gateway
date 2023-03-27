@@ -136,6 +136,7 @@ func (l GuildCreateListener) Run(ev gateway.EventData) {
 
 	if *l.client.Config.State.Channel {
 		for _, v := range data.Channels {
+			// TODO: Need to assign the guild id to this struct
 			dataMap, err := redis.StructToMap(v)
 			if err != nil {
 				log.Fatalf("[%v] Couldn't convert struct to map: %v", l.ListenerInfo().Event, err)
