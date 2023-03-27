@@ -11,16 +11,17 @@ type Broker struct {
 	Conn         *amqp.Connection
 	Channel      *amqp.Channel
 	retryAttempt int
+	clientId     string
 }
 
-func (b *Broker) Publish() {
-	if b.Conn.IsClosed() {
-
-	}
+func (b *Broker) Publish(key string, body []byte) error {
+	return b.Channel.Publish(b.clientId, key, false, false, amqp.Publishing{
+		Body: body,
+	})
 }
 
-func NewBroker(amqpURI string) *Broker {
-	b := &Broker{}
+func NewBroker(clientId, amqpURI string) *Broker {
+	b := &Broker{clientId: clientId}
 	var err error
 
 	for {

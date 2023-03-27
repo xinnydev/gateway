@@ -9,7 +9,6 @@ import (
 	"github.com/streadway/amqp"
 	"github.com/xinny/gateway/common"
 	"github.com/xinny/gateway/lib"
-	"github.com/xinny/gateway/redis"
 )
 
 type MessageCreateListener struct {
@@ -19,27 +18,19 @@ type MessageCreateListener struct {
 func (l MessageCreateListener) Run(ev gateway.EventData) {
 	ctx := context.Background()
 	data := ev.(gateway.EventMessageCreate)
-	mappedData, err := redis.StructToMap(data)
-	if err != nil {
-		log.Fatalf("[%v] Couldn't convert struct to map: %v", l.ListenerInfo().Event, err)
-	}
-	stringifiedData := redis.IterateMapAndStringify(mappedData)
 	if *l.client.Config.State.Message {
-		_, err = l.client.Redis.SAdd(ctx, fmt.Sprintf("%v%v", common.MessageKey, common.KeysSuffix), data.ID.String()).Result()
-		if err != nil {
+		if _, err := l.client.Redis.SAdd(ctx, fmt.Sprintf("%v%v", common.MessageKey, common.KeysSuffix), data.ID.String()).Result(); err != nil {
 			log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 		}
-		_, err = l.client.Redis.HSet(ctx, fmt.Sprintf("%v:%v", common.MessageKey, data.ID.String()), stringifiedData).Result()
-		if err != nil {
+		if _, err := l.client.Redis.Hset(fmt.Sprintf("%v:%v", common.MessageKey, data.ID.String()), data); err != nil {
 			log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 		}
 
 	}
 	body, _ := json.Marshal(data)
-	err = l.client.BrokerChannel.Publish(l.client.BotApplication.ID.String(), string(l.ListenerInfo().Event), false, false, amqp.Publishing{
+	if err := l.client.BrokerChannel.Publish(l.client.BotApplication.ID.String(), string(l.ListenerInfo().Event), false, false, amqp.Publishing{
 		Body: body,
-	})
-	if err != nil {
+	}); err != nil {
 		log.Fatalf("[%v] Couldn't publish exchange: %v", l.ListenerInfo().Event, err)
 		return
 	}

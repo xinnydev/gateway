@@ -7,10 +7,8 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
-	"github.com/streadway/amqp"
 	"github.com/xinny/gateway/common"
 	"github.com/xinny/gateway/lib"
-	"github.com/xinny/gateway/redis"
 )
 
 type GuildCreateListener struct {
@@ -28,10 +26,7 @@ func (l GuildCreateListener) Run(ev gateway.EventData) {
 
 	if oldData == 0 {
 		body, _ := json.Marshal(data)
-		err := l.client.BrokerChannel.Publish(l.client.BotApplication.ID.String(), string(l.ListenerInfo().Event), false, false, amqp.Publishing{
-			Body: body,
-		})
-		if err != nil {
+		if err := l.client.Broker.Publish(string(l.ListenerInfo().Event), body); err != nil {
 			log.Fatalf("[%v] Couldn't publish exchange: %v", l.ListenerInfo().Event, err)
 			return
 		}
@@ -40,19 +35,13 @@ func (l GuildCreateListener) Run(ev gateway.EventData) {
 	for _, v := range data.Members {
 		v.GuildID = data.ID
 		if *l.client.Config.State.User {
-			userMap, err := redis.StructToMap(v.User)
-			if err != nil {
-				log.Fatalf("[%v] Couldn't convert struct to map: %v", l.ListenerInfo().Event, err)
-			}
-			stringifiedUser := redis.IterateMapAndStringify(userMap)
 			if _, err := l.client.Redis.
 				SAdd(ctx, fmt.Sprintf("%v%v", common.UserKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, v.User.ID.String())).
 				Result(); err != nil {
 				log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 			}
 			if _, err := l.client.Redis.
-				HSet(ctx, fmt.Sprintf("%v:%v", common.UserKey, v.User.ID.String()), stringifiedUser).
-				Result(); err != nil {
+				Hset(fmt.Sprintf("%v:%v", common.UserKey, v.User.ID.String()), v); err != nil {
 				log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 			}
 		}
@@ -63,19 +52,13 @@ func (l GuildCreateListener) Run(ev gateway.EventData) {
 				v.User = discord.User{}
 			}
 
-			memberMap, err := redis.StructToMap(v)
-			if err != nil {
-				log.Fatalf("[%v] Couldn't convert struct to map: %v", l.ListenerInfo().Event, err)
-			}
-			stringifiedMember := redis.IterateMapAndStringify(memberMap)
 			if _, err := l.client.Redis.
 				SAdd(ctx, fmt.Sprintf("%v%v", common.MemberKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, memberId)).
 				Result(); err != nil {
 				log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 			}
 			if _, err := l.client.Redis.
-				HSet(ctx, fmt.Sprintf("%v:%v:%v", common.MemberKey, guildId, memberId), stringifiedMember).
-				Result(); err != nil {
+				Hset(fmt.Sprintf("%v:%v:%v", common.MemberKey, guildId, memberId), v); err != nil {
 				log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 			}
 		}
@@ -84,19 +67,13 @@ func (l GuildCreateListener) Run(ev gateway.EventData) {
 	if *l.client.Config.State.Role {
 		for _, v := range data.Roles {
 			v.GuildID = data.ID
-			dataMap, err := redis.StructToMap(v)
-			if err != nil {
-				log.Fatalf("[%v] Couldn't convert struct to map: %v", l.ListenerInfo().Event, err)
-			}
-			stringified := redis.IterateMapAndStringify(dataMap)
 			if _, err := l.client.Redis.
 				SAdd(ctx, fmt.Sprintf("%v%v", common.RoleKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, v.ID.String())).
 				Result(); err != nil {
 				log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 			}
 			if _, err := l.client.Redis.
-				HSet(ctx, fmt.Sprintf("%v:%v:%v", common.RoleKey, guildId, v.ID.String()), stringified).
-				Result(); err != nil {
+				Hset(fmt.Sprintf("%v:%v:%v", common.RoleKey, guildId, v.ID.String()), v); err != nil {
 				log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 			}
 		}
@@ -105,19 +82,13 @@ func (l GuildCreateListener) Run(ev gateway.EventData) {
 	if *l.client.Config.State.Voice {
 		for _, v := range data.VoiceStates {
 			v.GuildID = data.ID
-			dataMap, err := redis.StructToMap(v)
-			if err != nil {
-				log.Fatalf("[%v] Couldn't convert struct to map: %v", l.ListenerInfo().Event, err)
-			}
-			stringified := redis.IterateMapAndStringify(dataMap)
 			if _, err := l.client.Redis.
 				SAdd(ctx, fmt.Sprintf("%v%v", common.VoiceKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, v.UserID.String())).
 				Result(); err != nil {
 				log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 			}
 			if _, err := l.client.Redis.
-				HSet(ctx, fmt.Sprintf("%v:%v:%v", common.VoiceKey, guildId, v.UserID.String()), stringified).
-				Result(); err != nil {
+				Hset(fmt.Sprintf("%v:%v:%v", common.VoiceKey, guildId, v.UserID.String()), v); err != nil {
 				log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 			}
 		}
@@ -125,11 +96,13 @@ func (l GuildCreateListener) Run(ev gateway.EventData) {
 
 	if *l.client.Config.State.Channel {
 		for _, v := range data.Channels {
-			dataMap, err := redis.StructToMap(v)
+			dataMap, err := common.StructToMap(v)
 			if err != nil {
 				log.Fatalf("[%v] Couldn't convert struct to map: %v", l.ListenerInfo().Event, err)
 			}
-			stringified := redis.IterateMapAndStringify(dataMap, "guild_id")
+			// Need to exclude and append guild_id manually
+			// since the struct that returning guild id is interface
+			stringified := common.IterateMapAndStringify(dataMap, "guild_id")
 			stringified = append(stringified, "guild_id", guildId)
 			if _, err := l.client.Redis.
 				SAdd(ctx, fmt.Sprintf("%v%v", common.ChannelKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, v.ID().String())).
@@ -146,19 +119,13 @@ func (l GuildCreateListener) Run(ev gateway.EventData) {
 
 	if *l.client.Config.State.Emoji {
 		for _, v := range data.Emojis {
-			dataMap, err := redis.StructToMap(v)
-			if err != nil {
-				log.Fatalf("[%v] Couldn't convert struct to map: %v", l.ListenerInfo().Event, err)
-			}
-			stringified := redis.IterateMapAndStringify(dataMap)
 			if _, err := l.client.Redis.
 				SAdd(ctx, fmt.Sprintf("%v%v", common.EmojiKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, v.ID.String())).
 				Result(); err != nil {
 				log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 			}
 			if _, err := l.client.Redis.
-				HSet(ctx, fmt.Sprintf("%v:%v:%v", common.EmojiKey, guildId, v.ID.String()), stringified).
-				Result(); err != nil {
+				Hset(fmt.Sprintf("%v:%v:%v", common.EmojiKey, guildId, v.ID.String()), v); err != nil {
 				log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 			}
 		}
@@ -166,19 +133,13 @@ func (l GuildCreateListener) Run(ev gateway.EventData) {
 
 	if *l.client.Config.State.Presence {
 		for _, v := range data.Presences {
-			dataMap, err := redis.StructToMap(v)
-			if err != nil {
-				log.Fatalf("[%v] Couldn't convert struct to map: %v", l.ListenerInfo().Event, err)
-			}
-			stringified := redis.IterateMapAndStringify(dataMap)
 			if _, err := l.client.Redis.
 				SAdd(ctx, fmt.Sprintf("%v%v", common.PresenceKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, v.PresenceUser.ID.String())).
 				Result(); err != nil {
 				log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 			}
 			if _, err := l.client.Redis.
-				HSet(ctx, fmt.Sprintf("%v:%v:%v", common.PresenceKey, guildId, v.PresenceUser.ID.String()), stringified).
-				Result(); err != nil {
+				Hset(fmt.Sprintf("%v:%v:%v", common.PresenceKey, guildId, v.PresenceUser.ID.String()), v); err != nil {
 				log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 			}
 		}
@@ -191,14 +152,8 @@ func (l GuildCreateListener) Run(ev gateway.EventData) {
 	data.Members = []discord.Member{}
 	data.Roles = []discord.Role{}
 
-	dataMap, err := redis.StructToMap(data)
-	if err != nil {
-		log.Fatalf("[%v] Couldn't convert struct to map: %v", l.ListenerInfo().Event, err)
-	}
-	stringified := redis.IterateMapAndStringify(dataMap)
 	if _, err := l.client.Redis.
-		HSet(ctx, fmt.Sprintf("%v:%v", common.GuildKey, data.ID.String()), stringified).
-		Result(); err != nil {
+		Hset(fmt.Sprintf("%v:%v", common.GuildKey, data.ID.String()), data); err != nil {
 		log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 	}
 }

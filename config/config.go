@@ -10,7 +10,7 @@ import (
 type Config struct {
 	DiscordToken *string `env:"DISCORD_TOKEN,required"`
 	AMQPUrl      *string `env:"AMQP_URL,required"`
-	Redis        redis.RedisConfig
+	Redis        redis.Config
 	State        struct {
 		Channel      *bool `env:"STATE_CHANNEL,required"`
 		Emoji        *bool `env:"STATE_EMOJI,required"`
