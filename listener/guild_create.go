@@ -71,21 +71,23 @@ func (l GuildCreateListener) Run(ev gateway.EventData) {
 		}
 
 		if *l.client.Config.State.Member {
+			memberId := v.User.ID
 			if !*l.client.Config.State.User {
 				v.User = discord.User{}
 			}
+
 			memberMap, err := redis.StructToMap(v)
 			if err != nil {
 				log.Fatalf("[%v] Couldn't convert struct to map: %v", l.ListenerInfo().Event, err)
 			}
 			stringifiedMember := redis.IterateMapAndStringify(memberMap)
 			if _, err := l.client.Redis.
-				SAdd(ctx, fmt.Sprintf("%v%v", common.MemberKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, v.User.ID.String())).
+				SAdd(ctx, fmt.Sprintf("%v%v", common.MemberKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, memberId)).
 				Result(); err != nil {
 				log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 			}
 			if _, err := l.client.Redis.
-				HSet(ctx, fmt.Sprintf("%v:%v:%v", common.MemberKey, guildId, v.User.ID.String()), stringifiedMember).
+				HSet(ctx, fmt.Sprintf("%v:%v:%v", common.MemberKey, guildId, memberId), stringifiedMember).
 				Result(); err != nil {
 				log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 			}
