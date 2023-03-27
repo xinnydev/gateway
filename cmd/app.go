@@ -31,5 +31,6 @@ func Run() {
 	listener.RegisterGuildCreateListener(gateway)
 	listener.RegisterReadyListener(gateway)
 	listener.RegisterMessageCreateListener(gateway)
+	listener.RegisterGuildDeleteListener(gateway)
 	select {}
 }
