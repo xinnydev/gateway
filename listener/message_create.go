@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
-	"github.com/streadway/amqp"
 	"github.com/xinny/gateway/common"
 	"github.com/xinny/gateway/lib"
 )
@@ -28,9 +27,7 @@ func (l MessageCreateListener) Run(ev gateway.EventData) {
 
 	}
 	body, _ := json.Marshal(data)
-	if err := l.client.BrokerChannel.Publish(l.client.BotApplication.ID.String(), string(l.ListenerInfo().Event), false, false, amqp.Publishing{
-		Body: body,
-	}); err != nil {
+	if err := l.client.Broker.Publish(string(l.ListenerInfo().Event), body); err != nil {
 		log.Fatalf("[%v] Couldn't publish exchange: %v", l.ListenerInfo().Event, err)
 		return
 	}
