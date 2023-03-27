@@ -156,6 +156,11 @@ func (l GuildCreateListener) Run(ev gateway.EventData) {
 		Hset(fmt.Sprintf("%v:%v", common.GuildKey, data.ID.String()), data); err != nil {
 		log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 	}
+
+	if _, err := l.client.Redis.
+		SAdd(ctx, fmt.Sprintf("%v%v", common.GuildKey, common.KeysSuffix), guildId).Result(); err != nil {
+		log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
+	}
 }
 
 func (l GuildCreateListener) ListenerInfo() *common.ListenerInfo {
