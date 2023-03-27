@@ -3,6 +3,7 @@ package redis
 import (
 	"encoding/json"
 	"github.com/redis/go-redis/v9"
+	"golang.org/x/exp/slices"
 	"reflect"
 	"strings"
 )
@@ -49,9 +50,13 @@ func StructToMap(obj interface{}) (newMap map[string]interface{}, err error) {
 	return
 }
 
-func IterateMapAndStringify(in map[string]interface{}) []string {
+func IterateMapAndStringify(in map[string]interface{}, exclude ...string) []string {
 	var out []string
 	for k, val := range in {
+		if slices.Contains(exclude, k) {
+			continue
+		}
+
 		v := reflect.ValueOf(val)
 		if v.Kind() == reflect.Ptr {
 			v = v.Elem()
