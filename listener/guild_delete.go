@@ -77,9 +77,12 @@ func (l GuildDeleteListener) Run(ev gateway.EventData) {
 	if !data.Unavailable {
 		var oldGuild discord.Guild
 		// TODO: Need a serializer to serialize redis data
-		if err = l.client.Redis.HGetAll(ctx, fmt.Sprintf("%v:%v", common.GuildKey, guildId)).Scan(&oldGuild); err != nil {
-			log.Fatalf("[%v] Couldn't deserialize old guild: %v", l.ListenerInfo().Event, err)
+		if err := l.client.Redis.HGetAllAndParse(fmt.Sprintf("%v:%v", common.GuildKey, guildId), &oldGuild); err != nil {
+			log.Fatalf("[%v] Couldn't perform HGetAllAndParse: %v", l.ListenerInfo().Event, err)
 		}
+
+		test, _ := json.Marshal(oldGuild)
+		fmt.Printf("%v\n", string(test))
 
 		payload, _ := json.Marshal(struct {
 			old discord.Guild
