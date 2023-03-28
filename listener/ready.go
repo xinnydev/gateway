@@ -1,6 +1,7 @@
 package listener
 
 import (
+	"encoding/json"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
 	"github.com/xinny/gateway/common"
@@ -14,6 +15,11 @@ type ReadyListener struct {
 func (l ReadyListener) Run(ev gateway.EventData) {
 	data := ev.(gateway.EventReady)
 	log.Infof("%v is ready", data.User.Tag())
+	body, _ := json.Marshal(data)
+	if err := l.client.Broker.Publish(string(l.ListenerInfo().Event), body); err != nil {
+		log.Fatalf("[%v] Couldn't publish exchange: %v", l.ListenerInfo().Event, err)
+		return
+	}
 }
 
 func (l ReadyListener) ListenerInfo() *common.ListenerInfo {

@@ -25,6 +25,8 @@ func Run() {
 	if err = gateway.Ws.Open(ctx); err != nil {
 		panic(fmt.Sprintf("couldn't open ws connection: %v", err))
 	}
+
+	// Register all listeners
 	listener.RegisterChannelCreateListener(gateway)
 	listener.RegisterChannelDeleteListener(gateway)
 	listener.RegisterChannelPinsUpdateListener(gateway)
@@ -37,7 +39,13 @@ func Run() {
 	listener.RegisterGuildMemberUpdateListener(gateway)
 	listener.RegisterGuildMembersChunkListener(gateway)
 	listener.RegisterGuildRoleCreateListener(gateway)
-	listener.RegisterReadyListener(gateway)
+	listener.RegisterGuildRoleDeleteListener(gateway)
+	listener.RegisterGuildRoleUpdateListener(gateway)
 	listener.RegisterMessageCreateListener(gateway)
+	listener.RegisterMessageDeleteListener(gateway)
+	listener.RegisterMessageDeleteBulkListener(gateway)
+	listener.RegisterReadyListener(gateway)
+	listener.RegisterUserUpdateListener(gateway)
+	listener.RegisterVoiceStateUpdateListener(gateway)
 	select {}
 }

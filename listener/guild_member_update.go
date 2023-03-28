@@ -15,11 +15,6 @@ type GuildMemberUpdateListener struct {
 	client lib.GatewayClient
 }
 
-type payload struct {
-	Old discord.Member `json:"old"`
-	discord.Member
-}
-
 func (l GuildMemberUpdateListener) Run(ev gateway.EventData) {
 	data := ev.(gateway.EventGuildMemberUpdate)
 	ctx := context.Background()
@@ -32,7 +27,10 @@ func (l GuildMemberUpdateListener) Run(ev gateway.EventData) {
 		log.Fatalf("[%v] Couldn't perform HGetAllAndParse: %v", l.ListenerInfo().Event, err)
 	}
 
-	body, _ := json.Marshal(payload{
+	body, _ := json.Marshal(struct {
+		Old discord.Member `json:"old"`
+		discord.Member
+	}{
 		Member: data.Member,
 		Old:    old,
 	})
@@ -66,14 +64,7 @@ func (l GuildMemberUpdateListener) Run(ev gateway.EventData) {
 		}
 
 		if _, err := l.client.Redis.
-			Hset(fmt.Sprintf("%v:%v:%v", common.MemberKey, guildId, userId), struct {
-				payload
-			}{
-				payload: payload{
-					Old:    old,
-					Member: *toSet,
-				},
-			}); err != nil {
+			Hset(fmt.Sprintf("%v:%v:%v", common.MemberKey, guildId, userId), toSet); err != nil {
 			log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 		}
 	}

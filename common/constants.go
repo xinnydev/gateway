@@ -12,4 +12,5 @@ var (
 	VoiceKey    string = "voice"
 	EmojiKey    string = "emoji"
 	PresenceKey string = "presence"
+	BotUserKey  string = "bot_user"
 )
