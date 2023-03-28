@@ -55,11 +55,15 @@ func (c Client) Hset(key string, input interface{}) (int64, error) {
 
 // HGetAllAndParse FIXME: This function may be inefficient but idfc, as long it works :handshake:
 // but, seriously, this need a refactor if someone found the better way
-func (c Client) HGetAllAndParse(key string, output interface{}) error {
+func (c Client) HGetAllAndParse(key string, output interface{}) (exists bool, err error) {
 	ctx := context.Background()
 	res, err := c.HGetAll(ctx, key).Result()
 	if err != nil {
 		log.Fatalf("Couldn't perform HGETALL: %v", err)
+	}
+
+	if len(res) == 0 {
+		return false, nil
 	}
 
 	// Serialize types
@@ -105,7 +109,7 @@ firstLoop:
 	jsonData, _ := json.Marshal(out)
 	err = json.Unmarshal(jsonData, output)
 	if err != nil {
-		return err
+		return true, err
 	}
-	return nil
+	return true, nil
 }
