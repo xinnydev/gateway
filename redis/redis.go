@@ -3,9 +3,12 @@ package redis
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/redis/go-redis/v9"
 	"github.com/xinny/gateway/common"
 	"log"
+	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -50,6 +53,8 @@ func (c Client) Hset(key string, input interface{}) (int64, error) {
 	return c.HSet(context.Background(), key, data).Result()
 }
 
+// HGetAllAndParse FIXME: This function may be inefficient but idfc, as long it works :handshake:
+// but, seriously, this need a refactor if someone found the better way
 func (c Client) HGetAllAndParse(key string, output interface{}) error {
 	ctx := context.Background()
 	res, err := c.HGetAll(ctx, key).Result()
@@ -59,39 +64,45 @@ func (c Client) HGetAllAndParse(key string, output interface{}) error {
 
 	// Serialize types
 	out := map[string]interface{}{}
+firstLoop:
 	for k, v := range res {
+		structElem := reflect.TypeOf(output).Elem()
+		for s := 0; s < structElem.NumField(); s++ {
+			field := structElem.Field(s)
+			tag := field.Tag.Get("json")
+			fType := field.Type.Kind()
+			if tag != k {
+				continue
+			}
+
+			// If the struct field typed int, we have to parse the string manually
+			if fType == reflect.Int {
+				num, _ := strconv.Atoi(v)
+				out[k] = num
+				continue firstLoop
+			}
+		}
+
+		// Parse boolean
 		if v == "true" || v == "false" {
 			out[k] = v == "true"
-		} else if strings.HasSuffix(k, "id") && v == "null" {
-			out[k] = 0
-		} else if v == "null" || v == "undefined" {
-			//parsed, _ := json.Marshal(v)
-			out[k] = nil
 		} else if (strings.HasPrefix(v, "{") && strings.HasSuffix(v, "}")) ||
-			(strings.HasPrefix(v, "[") && strings.HasSuffix(v, "]")) {
-			parsed, _ := json.Marshal(v)
-			out[k] = parsed
+			(strings.HasPrefix(v, "[") && strings.HasSuffix(v, "]")) ||
+			v == "null" {
+			// Parse stringified array or json such as: "[]" or "{}"
+			// and the null value
+			var result struct {
+				Res interface{} `json:"res,omitempty"`
+			}
+			_ = json.Unmarshal([]byte(fmt.Sprintf("{ \"res\": %v }", v)), &result)
+			out[k] = result.Res
 		} else {
+			// We assume the rest is an ordinary string, no need to parse
 			out[k] = v
 		}
 	}
 
-	// Need to convert stringified int
-	//dst := reflect.TypeOf(output)
-	//for j := 0; j < dst.NumField(); j++ {
-	//	f := dst.Field(j)
-	//	tag := f.Tag.Get("json")
-	//	t := f.Type
-	//	if v, ok := out[tag]; ok {
-	//		if t.Kind() == reflect.Int {
-	//			num, _ := strconv.Atoi(v.(string))
-	//			out[tag] = num
-	//		}
-	//	}
-	//}
-
 	jsonData, _ := json.Marshal(out)
-	log.Printf("%v\n", string(jsonData))
 	err = json.Unmarshal(jsonData, output)
 	if err != nil {
 		return err
