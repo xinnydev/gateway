@@ -161,15 +161,6 @@ func (l GuildCreateListener) Run(ev gateway.EventData) {
 		SAdd(ctx, fmt.Sprintf("%v%v", common.GuildKey, common.KeysSuffix), guildId).Result(); err != nil {
 		log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 	}
-
-	// Test guild delete
-	for _, v := range common.Listeners {
-		if v.ListenerInfo().Event == gateway.EventTypeGuildDelete {
-			v.Run(gateway.EventGuildDelete{
-				GatewayGuild: data.GatewayGuild,
-			})
-		}
-	}
 }
 
 func (l GuildCreateListener) ListenerInfo() *common.ListenerInfo {

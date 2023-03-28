@@ -80,9 +80,6 @@ func (l GuildDeleteListener) Run(ev gateway.EventData) {
 			log.Fatalf("[%v] Couldn't perform HGetAllAndParse: %v", l.ListenerInfo().Event, err)
 		}
 
-		test, _ := json.Marshal(oldGuild)
-		fmt.Printf("%v\n", string(test))
-
 		payload, _ := json.Marshal(struct {
 			old discord.Guild
 			gateway.EventGuildDelete
