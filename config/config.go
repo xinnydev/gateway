@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/caarlos0/env/v7"
+	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
 	"github.com/joho/godotenv"
 	"github.com/xinny/gateway/redis"
@@ -9,9 +10,19 @@ import (
 
 type Config struct {
 	DiscordToken *string `env:"DISCORD_TOKEN,required"`
-	AMQPUrl      *string `env:"AMQP_URL,required"`
-	Redis        redis.Config
-	State        struct {
+	Gateway      struct {
+		Intents          *gateway.Intents `env:"GATEWAY_INTENTS,required"`
+		HelloTimeout     *int             `env:"GATEWAY_HELLO_TIMEOUT"`
+		ReadyTimeout     *int             `env:"GATEWAY_READY_TIMEOUT"`
+		HandshakeTimeout *int             `env:"GATEWAY_HANDSHAKE_TIMEOUT"`
+		LargeThreshold   *int             `env:"GATEWAY_LARGE_THRESHOLD" envDefault:"250"`
+		ShardCount       *int             `env:"GATEWAY_SHARD_COUNT"`
+		ShardStart       *int             `env:"GATEWAY_SHARD_START"`
+		ShardEnd         *int             `env:"GATEWAY_SHARD_END"`
+	}
+	AMQPUrl *string `env:"AMQP_URL,required"`
+	Redis   redis.Config
+	State   struct {
 		Channel      *bool `env:"STATE_CHANNEL,required"`
 		Emoji        *bool `env:"STATE_EMOJI,required"`
 		Member       *bool `env:"STATE_MEMBER,required"`

@@ -9,6 +9,7 @@ import (
 	"github.com/xinny/gateway/common"
 	"github.com/xinny/gateway/config"
 	"github.com/xinny/gateway/redis"
+	"time"
 )
 
 type GatewayClient struct {
@@ -18,13 +19,14 @@ type GatewayClient struct {
 	BotApplication *discord.Application
 	Redis          *redis.Client
 	Config         *config.Config
+	startTime      time.Time
 }
 
-func NewGateway(gatewayConf config.Config) *GatewayClient {
+func NewGateway(conf config.Config) *GatewayClient {
 	client := GatewayClient{
-		Rest:   rest.New(rest.NewClient(*gatewayConf.DiscordToken)),
-		Redis:  redis.NewRedisClient(gatewayConf.Redis),
-		Config: &gatewayConf,
+		Rest:   rest.New(rest.NewClient(*conf.DiscordToken)),
+		Redis:  redis.NewRedisClient(conf.Redis),
+		Config: &conf,
 	}
 
 	// Fetch client user
@@ -34,7 +36,7 @@ func NewGateway(gatewayConf config.Config) *GatewayClient {
 		panic(fmt.Sprintf("couldn't fetch self-user: %v", err))
 	}
 
-	b := broker.NewBroker(user.ID.String(), *gatewayConf.AMQPUrl)
+	b := broker.NewBroker(user.ID.String(), *conf.AMQPUrl)
 	_, err = b.Channel.QueueDeclare(common.Exchange, false, false, false, false, nil)
 	err = b.Channel.ExchangeDeclare(user.ID.String(), "direct", false, false, false, false, nil)
 	if err != nil {
@@ -42,9 +44,20 @@ func NewGateway(gatewayConf config.Config) *GatewayClient {
 	}
 
 	client.Broker = b
-	client.Ws = gateway.New(*gatewayConf.DiscordToken, client.handleWsEvent, handleWsClose, gateway.WithIntents(131071))
-	client.BotApplication = user
+	client.Ws = gateway.New(*conf.DiscordToken, client.handleWsEvent, handleWsClose, func(c *gateway.Config) {
+		if conf.Gateway.HandshakeTimeout != nil {
+			c.Dialer.HandshakeTimeout = time.Duration(*conf.Gateway.HandshakeTimeout)
+		}
+		if conf.Gateway.ShardCount != nil {
+			c.ShardCount = *conf.Gateway.ShardCount
+		}
+	},
+		gateway.WithIntents(*conf.Gateway.Intents),
+		gateway.WithCompress(true),
+		gateway.WithLargeThreshold(*conf.Gateway.LargeThreshold))
 
+	client.BotApplication = user
+	client.startTime = time.Now()
 	return &client
 }
 

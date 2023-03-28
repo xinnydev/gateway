@@ -25,6 +25,9 @@ func Run() {
 	if err = gateway.Ws.Open(ctx); err != nil {
 		panic(fmt.Sprintf("couldn't open ws connection: %v", err))
 	}
+	// TODO: Impl ready timeout handler
+	// TODO: Impl hello timeout handler
+	// TODO: Impl sharding
 
 	// Register all listeners
 	listener.RegisterChannelCreateListener(gateway)
