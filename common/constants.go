@@ -1,8 +1,7 @@
 package common
 
-//type Constants string
-
 var (
+	Exchange    string = "xinny-gateway"
 	KeysSuffix  string = "_keys"
 	ChannelKey  string = "channel"
 	MessageKey  string = "message"

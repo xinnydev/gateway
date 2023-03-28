@@ -35,14 +35,15 @@ func NewGateway(gatewayConf config.Config) *GatewayClient {
 	}
 
 	b := broker.NewBroker(user.ID.String(), *gatewayConf.AMQPUrl)
+	_, err = b.Channel.QueueDeclare(common.Exchange, false, false, false, false, nil)
+	err = b.Channel.ExchangeDeclare(user.ID.String(), "direct", false, false, false, false, nil)
+	if err != nil {
+		panic(fmt.Sprintf("couldn't declare amqp topic: %v", err))
+	}
 
 	client.Broker = b
 	client.Ws = gateway.New(*gatewayConf.DiscordToken, client.handleWsEvent, handleWsClose, gateway.WithIntents(131071))
 	client.BotApplication = user
-	err = b.Channel.ExchangeDeclare(user.ID.String(), "topic", false, false, false, false, nil)
-	if err != nil {
-		panic(fmt.Sprintf("couldn't declare amqp topic: %v", err))
-	}
 
 	return &client
 }

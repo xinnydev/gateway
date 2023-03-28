@@ -16,7 +16,9 @@ type Broker struct {
 
 func (b *Broker) Publish(key string, body []byte) error {
 	return b.Channel.Publish(b.clientId, key, false, false, amqp.Publishing{
-		Body: body,
+		ContentType: "application/json",
+		Type:        key,
+		Body:        body,
 	})
 }
 
