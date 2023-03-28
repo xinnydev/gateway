@@ -36,7 +36,7 @@ func (l GuildCreateListener) Run(ev gateway.EventData) {
 		v.GuildID = data.ID
 		if *l.client.Config.State.User {
 			if _, err := l.client.Redis.
-				SAdd(ctx, fmt.Sprintf("%v%v", common.UserKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, v.User.ID.String())).
+				SAdd(ctx, fmt.Sprintf("%v%v", common.UserKey, common.KeysSuffix), v.User.ID.String()).
 				Result(); err != nil {
 				log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 			}
@@ -48,8 +48,9 @@ func (l GuildCreateListener) Run(ev gateway.EventData) {
 
 		if *l.client.Config.State.Member {
 			memberId := v.User.ID
+			cloned := &v
 			if !*l.client.Config.State.User {
-				v.User = discord.User{}
+				cloned.User = discord.User{}
 			}
 
 			if _, err := l.client.Redis.
@@ -58,7 +59,7 @@ func (l GuildCreateListener) Run(ev gateway.EventData) {
 				log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 			}
 			if _, err := l.client.Redis.
-				Hset(fmt.Sprintf("%v:%v:%v", common.MemberKey, guildId, memberId), v); err != nil {
+				Hset(fmt.Sprintf("%v:%v:%v", common.MemberKey, guildId, memberId), cloned); err != nil {
 				log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 			}
 		}
