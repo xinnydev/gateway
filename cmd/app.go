@@ -28,9 +28,16 @@ func Run() {
 	listener.RegisterChannelCreateListener(gateway)
 	listener.RegisterChannelDeleteListener(gateway)
 	listener.RegisterChannelPinsUpdateListener(gateway)
+	listener.RegisterChannelUpdateListener(gateway)
 	listener.RegisterGuildCreateListener(gateway)
+	listener.RegisterGuildDeleteListener(gateway)
+	listener.RegisterGuildEmojisUpdateListener(gateway)
+	listener.RegisterGuildMemberAddListener(gateway)
+	listener.RegisterGuildMemberRemoveListener(gateway)
+	listener.RegisterGuildMemberUpdateListener(gateway)
+	listener.RegisterGuildMembersChunkListener(gateway)
+	listener.RegisterGuildRoleCreateListener(gateway)
 	listener.RegisterReadyListener(gateway)
 	listener.RegisterMessageCreateListener(gateway)
-	listener.RegisterGuildDeleteListener(gateway)
 	select {}
 }
