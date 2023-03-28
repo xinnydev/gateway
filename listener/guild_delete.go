@@ -76,16 +76,21 @@ func (l GuildDeleteListener) Run(ev gateway.EventData) {
 
 	if !data.Unavailable {
 		var oldGuild discord.Guild
-		if err := l.client.Redis.HGetAllAndParse(fmt.Sprintf("%v:%v", common.GuildKey, guildId), &oldGuild); err != nil {
+		exists, err := l.client.Redis.HGetAllAndParse(fmt.Sprintf("%v:%v", common.GuildKey, guildId), &oldGuild)
+		if err != nil {
 			log.Fatalf("[%v] Couldn't perform HGetAllAndParse: %v", l.ListenerInfo().Event, err)
 		}
 
+		if !exists {
+			log.Fatalf("[%v] Guild cache expected to present", l.ListenerInfo().Event, err)
+		}
+
 		payload, _ := json.Marshal(struct {
-			old discord.Guild
+			Old discord.Guild `json:"old"`
 			gateway.EventGuildDelete
 		}{
 			EventGuildDelete: data,
-			old:              oldGuild,
+			Old:              oldGuild,
 		})
 
 		if err := l.client.Broker.Publish(string(l.ListenerInfo().Event), payload); err != nil {
