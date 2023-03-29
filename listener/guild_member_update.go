@@ -39,7 +39,7 @@ func (l GuildMemberUpdateListener) Run(ev gateway.EventData) {
 		return
 	}
 
-	if *l.client.Config.State.User || data.User.ID.String() == l.client.BotApplication.ID.String() {
+	if *l.client.Config.State.User || data.User.ID.String() == l.client.BotID {
 		if _, err := l.client.Redis.
 			SAdd(ctx, fmt.Sprintf("%v%v", common.UserKey, common.KeysSuffix), userId).
 			Result(); err != nil {
@@ -51,7 +51,7 @@ func (l GuildMemberUpdateListener) Run(ev gateway.EventData) {
 		}
 	}
 
-	if *l.client.Config.State.Member || data.User.ID.String() == l.client.BotApplication.ID.String() {
+	if *l.client.Config.State.Member || data.User.ID.String() == l.client.BotID {
 		if _, err := l.client.Redis.
 			SAdd(ctx, fmt.Sprintf("%v%v", common.MemberKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, userId)).
 			Result(); err != nil {
