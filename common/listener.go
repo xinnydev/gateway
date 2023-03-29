@@ -20,5 +20,5 @@ type Listener interface {
 
 func RegisterListener(listener Listener) {
 	Listeners = append(Listeners, listener)
-	log.Infof("Registered: %v", listener.ListenerInfo().Event)
+	log.Infof("registered listener: %v", listener.ListenerInfo().Event)
 }

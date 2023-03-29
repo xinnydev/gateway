@@ -1,7 +1,7 @@
 package broker
 
 import (
-	"log"
+	log "github.com/disgoorg/log"
 	"time"
 
 	"github.com/streadway/amqp"
@@ -15,6 +15,7 @@ type Broker struct {
 }
 
 func (b *Broker) Publish(key string, body []byte) error {
+	log.Debugf("[amqp] publishing: %v", key)
 	return b.Channel.Publish(b.clientId, key, false, false, amqp.Publishing{
 		ContentType: "application/json",
 		Type:        key,
@@ -33,7 +34,7 @@ func NewBroker(clientId, amqpURI string) *Broker {
 		if err == nil {
 			break
 		}
-		log.Printf("Failed to connect to AMQP broker. Retrying in 5 seconds...")
+		log.Warn("Failed to connect to AMQP broker. Retrying in 5 seconds...")
 		time.Sleep(5 * time.Second)
 	}
 
@@ -51,7 +52,7 @@ func (b *Broker) handleReconnect(amqpURI string) {
 	onClose := b.Conn.NotifyClose(make(chan *amqp.Error))
 	for {
 		<-onClose
-		log.Printf("AMQP connection lost. Reconnecting...")
+		log.Warnf("AMQP connection lost. Reconnecting...")
 		for {
 			if b.retryAttempt >= 3 {
 				panic("couldn't reconnect to amqp broker after 3 attempts")
@@ -65,7 +66,7 @@ func (b *Broker) handleReconnect(amqpURI string) {
 				b.retryAttempt = 0
 				break
 			}
-			log.Printf("Failed to connect to AMQP broker. Retrying in 5 seconds...")
+			log.Warnf("Failed to connect to AMQP broker. Retrying in 5 seconds...")
 			time.Sleep(5 * time.Second)
 		}
 
