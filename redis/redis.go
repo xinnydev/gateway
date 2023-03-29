@@ -83,6 +83,7 @@ func (c Client) ClearCache() {
 		common.SessionKey}
 
 	for _, v := range patterns {
+		// Clear Hash
 		keys, err := c.ScanKeys(fmt.Sprintf("%v*", v))
 		if err != nil {
 			log.Fatalf("[clearCache] unable to scan keys: %v", err)
@@ -96,6 +97,15 @@ func (c Client) ClearCache() {
 			log.Fatalf("[clearCache] unable to unlink keys: %v", err)
 		}
 		log.Infof("[clearCache] unlinked %v %v:*", res, v)
+
+		// Clear Set
+		res, err = c.Unlink(context.Background(), fmt.Sprintf("%v%v", v, common.KeysSuffix)).Result()
+		if err != nil {
+			log.Fatalf("[clearCache] unable to unlink keys: %v", err)
+		}
+		if res != 0 {
+			log.Infof("[clearCache] unlinked %v %v%v", res, v, common.KeysSuffix)
+		}
 	}
 }
 
