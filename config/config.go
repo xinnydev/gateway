@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/caarlos0/env/v7"
+	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
 	"github.com/joho/godotenv"
@@ -17,6 +18,11 @@ type Config struct {
 		ShardCount       *int             `env:"GATEWAY_SHARD_COUNT,required"`
 		ShardStart       *int             `env:"GATEWAY_SHARD_START"`
 		ShardEnd         *int             `env:"GATEWAY_SHARD_END"`
+		Presence         struct {
+			Status *discord.OnlineStatus `env:"GATEWAY_PRESENCE_STATUS" envDefault:"online"`
+			Name   *string               `env:"GATEWAY_PRESENCE_NAME"`
+			Type   *int                  `env:"GATEWAY_PRESENCE_TYPE"`
+		}
 	}
 	AMQPUrl *string `env:"AMQP_URL,required"`
 	Redis   redis.Config
