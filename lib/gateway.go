@@ -13,7 +13,6 @@ import (
 	"github.com/xinny/gateway/config"
 	"github.com/xinny/gateway/redis"
 	"strings"
-	"time"
 )
 
 type GatewayClient struct {
@@ -29,18 +28,13 @@ func NewGateway(conf config.Config) *GatewayClient {
 	clientId, _ := base64.StdEncoding.DecodeString(strings.Split(*conf.DiscordToken, ".")[0])
 	client := GatewayClient{
 		BotID:  string(clientId),
+		Broker: broker.NewBroker(string(clientId), *conf.AMQPUrl),
 		Rest:   rest.New(rest.NewClient(*conf.DiscordToken)),
 		Redis:  redis.NewRedisClient(conf.Redis),
 		Config: &conf,
 	}
 
-	b := broker.NewBroker(client.BotID, *conf.AMQPUrl)
-	_, err := b.Channel.QueueDeclare(common.Exchange, false, false, false, false, nil)
-	err = b.Channel.ExchangeDeclare(client.BotID, "direct", false, false, false, false, nil)
-	if err != nil {
-		log.Fatalf(fmt.Sprintf("couldn't declare amqp topic: %v", err))
-	}
-
+	// Fetch session keys to decide whether clear the redis cache or no
 	sessionKeys, err := client.Redis.ScanKeys(fmt.Sprintf("%v*", common.SessionKey))
 	if err != nil {
 		log.Fatalf("couldn't fetch session keys: %v", err)
@@ -48,65 +42,79 @@ func NewGateway(conf config.Config) *GatewayClient {
 	if len(sessionKeys) < 1 {
 		client.Redis.ClearCache()
 	}
-	client.Broker = b
-	client.ShardManager = sharding.New(*conf.DiscordToken, client.handleWsEvent, sharding.WithGatewayConfigOpts(
-		gateway.WithIntents(*conf.Gateway.Intents),
-		gateway.WithCompress(true),
-		gateway.WithPresenceOpts(func(p *gateway.MessageDataPresenceUpdate) {
-			p.Status = *conf.Gateway.Presence.Status
-			if conf.Gateway.Presence.Type != nil && conf.Gateway.Presence.Name != nil {
-				p.Activities = []discord.Activity{
-					{
-						Name: *conf.Gateway.Presence.Name,
-						Type: discord.ActivityType(*conf.Gateway.Presence.Type),
-					},
+
+	// Declare the queue and the exchange
+	_, err = client.Broker.Channel.QueueDeclare(common.Exchange, false, false, false, false, nil)
+	err = client.Broker.Channel.ExchangeDeclare(client.BotID, "direct", false, false, false, false, nil)
+	if err != nil {
+		log.Fatalf("couldn't declare amqp topic: %v", err)
+	}
+
+	// Declare ShardManager
+	client.ShardManager = sharding.New(*conf.DiscordToken, client.handleWsEvent,
+		sharding.WithGatewayConfigOpts(
+			func(config *gateway.Config) {
+				config.Intents = *conf.Gateway.Intents
+				config.EnableRawEvents = true
+				config.Compress = true
+				config.LargeThreshold = *conf.Gateway.LargeThreshold
+				config.Presence = &gateway.MessageDataPresenceUpdate{
+					Status: *conf.Gateway.Presence.Status,
+				}
+
+				if conf.Gateway.Presence.Type != nil && conf.Gateway.Presence.Name != nil {
+					config.Presence.Activities = []discord.Activity{
+						{
+							Name: *conf.Gateway.Presence.Name,
+							Type: discord.ActivityType(*conf.Gateway.Presence.Type),
+						},
+					}
+				}
+			}), func(shardConf *sharding.Config) {
+			shardConf.GatewayCreateFunc = client.createGatewayFunc
+			shardConf.ShardCount = *conf.Gateway.ShardCount
+			if conf.Gateway.ShardStart != nil && conf.Gateway.ShardEnd != nil {
+				shardConf.ShardIDs = map[int]struct{}{}
+				for i := *conf.Gateway.ShardStart; i <= *conf.Gateway.ShardEnd; i++ {
+					shardConf.ShardIDs[i] = struct{}{}
 				}
 			}
-		}),
-		gateway.WithLargeThreshold(*conf.Gateway.LargeThreshold), func(c *gateway.Config) {
-			if conf.Gateway.HandshakeTimeout != nil {
-				c.Dialer.HandshakeTimeout = time.Duration(*conf.Gateway.HandshakeTimeout)
-			}
-		}), sharding.WithShardCount(*conf.Gateway.ShardCount), sharding.WithGatewayCreateFunc(func(token string, eventHandlerFunc gateway.EventHandlerFunc, closeHandlerFUnc gateway.CloseHandlerFunc, opts ...gateway.ConfigOpt) gateway.Gateway {
-		g := gateway.New(token, eventHandlerFunc, closeHandlerFUnc, opts...)
-		var sessionData redis.SessionData
-		exists, err := client.Redis.HGetAllAndParse(
-			fmt.Sprintf("%v:%v:%v", common.SessionKey, client.BotID, g.ShardID()),
-			&sessionData)
-		if err != nil {
-			log.Fatalf("unable to fetch session data: %v", err)
-		}
-		if !exists {
-			return g
-		}
-		g = gateway.New(token, eventHandlerFunc, closeHandlerFUnc, func(config *gateway.Config) {
-			for _, v := range opts {
-				v(config)
-			}
-			config.SessionID = &sessionData.SessionID
-			config.ResumeURL = &sessionData.ResumeURL
-			config.EnableResumeURL = true
-			log.Debugf("[%v/%v] resuming session: %v", config.ShardID, config.ShardCount, sessionData.SessionID)
 		})
-		return g
-	}), func(config *sharding.Config) {
-		if conf.Gateway.ShardStart != nil && conf.Gateway.ShardEnd != nil {
-			config.ShardIDs = map[int]struct{}{}
-			for i := *conf.Gateway.ShardStart; i <= *conf.Gateway.ShardEnd; i++ {
-				config.ShardIDs[i] = struct{}{}
-			}
-		}
-	})
 
 	return &client
 }
 
 func (c *GatewayClient) handleWsEvent(gatewayEventType gateway.EventType, sequenceNumber int, shardID int, event gateway.EventData) {
-	//log.Infof("%v", gatewayEventType)
 	for _, listener := range common.Listeners {
 		if listener.ListenerInfo().Event == gatewayEventType {
 			listener.Run(event)
 			break
 		}
 	}
+}
+
+func (c *GatewayClient) createGatewayFunc(token string, eventHandler gateway.EventHandlerFunc, closeHandler gateway.CloseHandlerFunc, opts ...gateway.ConfigOpt) gateway.Gateway {
+	options := gateway.Config{}
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	var sessionData redis.SessionData
+	exists, err := c.Redis.HGetAllAndParse(
+		fmt.Sprintf("%v:%v:%v", common.SessionKey, c.BotID, options.ShardID),
+		&sessionData)
+	if err != nil {
+		log.Fatalf("unable to fetch session data: %v", err)
+	}
+
+	if exists {
+		options.SessionID = &sessionData.SessionID
+		options.ResumeURL = &sessionData.ResumeURL
+		options.EnableResumeURL = true
+		log.Debugf("[%v/%v] resuming session: %v", options.ShardID, options.ShardCount, sessionData.SessionID)
+	}
+
+	return gateway.New(token, eventHandler, closeHandler, func(config *gateway.Config) {
+		config = &options
+	})
 }
