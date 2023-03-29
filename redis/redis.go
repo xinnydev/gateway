@@ -24,27 +24,39 @@ func (r *URLs) UnmarshalText(text []byte) error {
 }
 
 type Config struct {
-	Password *string `env:"REDIS_PASSWORD"`
+	Password *string `env:"REDIS_PASSWORD" envDefault:""`
+	Username *string `env:"REDIS_USERNAME" envDefault:""`
 	URLs     *URLs   `env:"REDIS_URL,required"`
-	PoolSize *int    `env:"REDIS_POOL_SIZE,required"`
+	PoolSize *int    `env:"REDIS_POOL_SIZE"`
+	Db       *int    `env:"REDIS_DB" envDefault:"0"`
 }
 
 type Client struct {
-	*redis.ClusterClient
+	config Config
+	redis.UniversalClient
 }
 
 func NewRedisClient(conf Config) *Client {
-	opts := &redis.ClusterOptions{
-		Addrs: *conf.URLs,
+	opts := &redis.UniversalOptions{
+		Addrs:         *conf.URLs,
+		RouteRandomly: true,
+		DB:            *conf.Db,
+	}
+
+	if conf.Username != nil {
+		opts.Username = *conf.Username
 	}
 
 	if conf.Password != nil {
 		opts.Password = *conf.Password
 	}
 
-	client := redis.NewClusterClient(opts)
+	if conf.PoolSize != nil {
+		opts.PoolSize = *conf.PoolSize
+	}
 
-	return &Client{client}
+	client := redis.NewUniversalClient(opts)
+	return &Client{UniversalClient: client, config: conf}
 }
 
 func (c Client) Hset(key string, input interface{}) (int64, error) {
@@ -55,6 +67,57 @@ func (c Client) Hset(key string, input interface{}) (int64, error) {
 
 	data := common.IterateMapAndStringify(mappedData)
 	return c.HSet(context.Background(), key, data).Result()
+}
+
+func (c Client) ClearCache() {
+	patterns := []string{
+		common.RoleKey,
+		common.MemberKey,
+		common.UserKey,
+		common.MessageKey,
+		common.VoiceKey,
+		common.GuildKey,
+		common.PresenceKey,
+		common.EmojiKey,
+		common.ChannelKey,
+		common.SessionKey}
+
+	for _, v := range patterns {
+		keys, err := c.ScanKeys(fmt.Sprintf("%v*", v))
+		if err != nil {
+			log.Fatalf("[clearCache] unable to scan keys: %v", err)
+		}
+		if len(keys) < 1 {
+			log.Infof("[clearCache] %v:* is empty", v)
+			continue
+		}
+		res, err := c.Unlink(context.Background(), keys...).Result()
+		if err != nil {
+			log.Fatalf("[clearCache] unable to unlink keys: %v", err)
+		}
+		log.Infof("[clearCache] unlinked %v %v:*", res, v)
+	}
+}
+
+func (c Client) ScanKeys(pattern string) (result []string, err error) {
+	ctx := context.Background()
+	if len(*c.config.URLs) > 1 {
+		cluster := (c.UniversalClient).(*redis.ClusterClient)
+		err = cluster.ForEachShard(ctx, func(ctx context.Context, node *redis.Client) error {
+			iter := node.Scan(ctx, 0, pattern, 0).Iterator()
+			for iter.Next(ctx) {
+				result = append(result, iter.Val())
+			}
+			return nil
+		})
+		return
+	}
+
+	iter := c.Scan(ctx, 0, pattern, 0).Iterator()
+	for iter.Next(ctx) {
+		result = append(result, iter.Val())
+	}
+	return
 }
 
 // HGetAllAndParse FIXME: This function may be inefficient but idfc, as long it works :handshake:
