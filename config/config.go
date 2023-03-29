@@ -12,11 +12,9 @@ type Config struct {
 	DiscordToken *string `env:"DISCORD_TOKEN,required"`
 	Gateway      struct {
 		Intents          *gateway.Intents `env:"GATEWAY_INTENTS,required"`
-		HelloTimeout     *int             `env:"GATEWAY_HELLO_TIMEOUT"`
-		ReadyTimeout     *int             `env:"GATEWAY_READY_TIMEOUT"`
 		HandshakeTimeout *int             `env:"GATEWAY_HANDSHAKE_TIMEOUT"`
 		LargeThreshold   *int             `env:"GATEWAY_LARGE_THRESHOLD" envDefault:"250"`
-		ShardCount       *int             `env:"GATEWAY_SHARD_COUNT"`
+		ShardCount       *int             `env:"GATEWAY_SHARD_COUNT,required"`
 		ShardStart       *int             `env:"GATEWAY_SHARD_START"`
 		ShardEnd         *int             `env:"GATEWAY_SHARD_END"`
 	}

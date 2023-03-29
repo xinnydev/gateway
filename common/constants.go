@@ -13,4 +13,5 @@ var (
 	EmojiKey    string = "emoji"
 	PresenceKey string = "presence"
 	BotUserKey  string = "bot_user"
+	SessionKey  string = "session"
 )

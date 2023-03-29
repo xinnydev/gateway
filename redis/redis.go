@@ -4,15 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	log "github.com/disgoorg/log"
 	"github.com/redis/go-redis/v9"
 	"github.com/xinny/gateway/common"
-	"log"
 	"reflect"
 	"strconv"
 	"strings"
 )
 
 type URLs []string
+type SessionData struct {
+	SessionID string `json:"session_id"`
+	ResumeURL string `json:"resume_url"`
+}
 
 func (r *URLs) UnmarshalText(text []byte) error {
 	*r = strings.Split(string(text), ",")

@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"github.com/disgoorg/log"
 	"github.com/joho/godotenv"
 	"github.com/xinny/gateway/config"
 	"github.com/xinny/gateway/lib"
@@ -22,12 +23,7 @@ func Run() {
 
 	ctx := context.Background()
 	gateway := lib.NewGateway(conf)
-	if err = gateway.Ws.Open(ctx); err != nil {
-		panic(fmt.Sprintf("couldn't open ws connection: %v", err))
-	}
-	// TODO: Impl ready timeout handler
-	// TODO: Impl hello timeout handler
-	// TODO: Impl sharding
+	log.SetLevel(log.LevelDebug)
 
 	// Register all listeners
 	listener.RegisterChannelCreateListener(gateway)
@@ -50,5 +46,7 @@ func Run() {
 	listener.RegisterReadyListener(gateway)
 	listener.RegisterUserUpdateListener(gateway)
 	listener.RegisterVoiceStateUpdateListener(gateway)
+
+	gateway.ShardManager.Open(ctx)
 	select {}
 }
