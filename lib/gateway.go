@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
@@ -11,46 +12,57 @@ import (
 	"github.com/xinny/gateway/common"
 	"github.com/xinny/gateway/config"
 	"github.com/xinny/gateway/redis"
+	"strings"
 	"time"
 )
 
 type GatewayClient struct {
-	Broker         *broker.Broker
-	Rest           rest.Rest
-	ShardManager   sharding.ShardManager
-	BotApplication *discord.Application
-	Redis          *redis.Client
-	Config         *config.Config
+	BotID        string
+	Broker       *broker.Broker
+	Rest         rest.Rest
+	ShardManager sharding.ShardManager
+	Redis        *redis.Client
+	Config       *config.Config
 }
 
 func NewGateway(conf config.Config) *GatewayClient {
-
+	clientId, _ := base64.StdEncoding.DecodeString(strings.Split(*conf.DiscordToken, ".")[0])
 	client := GatewayClient{
+		BotID:  string(clientId),
 		Rest:   rest.New(rest.NewClient(*conf.DiscordToken)),
 		Redis:  redis.NewRedisClient(conf.Redis),
 		Config: &conf,
 	}
 
-	// Fetch client user
-	user, err := client.Rest.GetBotApplicationInfo()
-
+	b := broker.NewBroker(client.BotID, *conf.AMQPUrl)
+	_, err := b.Channel.QueueDeclare(common.Exchange, false, false, false, false, nil)
+	err = b.Channel.ExchangeDeclare(client.BotID, "direct", false, false, false, false, nil)
 	if err != nil {
-		panic(fmt.Sprintf("couldn't fetch self-user: %v", err))
-	}
-	client.BotApplication = user
-
-	b := broker.NewBroker(user.ID.String(), *conf.AMQPUrl)
-	_, err = b.Channel.QueueDeclare(common.Exchange, false, false, false, false, nil)
-	err = b.Channel.ExchangeDeclare(user.ID.String(), "direct", false, false, false, false, nil)
-	if err != nil {
-		panic(fmt.Sprintf("couldn't declare amqp topic: %v", err))
+		log.Fatalf(fmt.Sprintf("couldn't declare amqp topic: %v", err))
 	}
 
+	sessionKeys, err := client.Redis.ScanKeys(fmt.Sprintf("%v*", common.SessionKey))
+	if err != nil {
+		log.Fatalf("couldn't fetch session keys: %v", err)
+	}
+	if len(sessionKeys) < 1 {
+		client.Redis.ClearCache()
+	}
 	client.Broker = b
 	client.ShardManager = sharding.New(*conf.DiscordToken, client.handleWsEvent, sharding.WithGatewayConfigOpts(
 		gateway.WithIntents(*conf.Gateway.Intents),
 		gateway.WithCompress(true),
-		gateway.WithEnableRawEvents(true),
+		gateway.WithPresenceOpts(func(p *gateway.MessageDataPresenceUpdate) {
+			p.Status = *conf.Gateway.Presence.Status
+			if conf.Gateway.Presence.Type != nil && conf.Gateway.Presence.Name != nil {
+				p.Activities = []discord.Activity{
+					{
+						Name: *conf.Gateway.Presence.Name,
+						Type: discord.ActivityType(*conf.Gateway.Presence.Type),
+					},
+				}
+			}
+		}),
 		gateway.WithLargeThreshold(*conf.Gateway.LargeThreshold), func(c *gateway.Config) {
 			if conf.Gateway.HandshakeTimeout != nil {
 				c.Dialer.HandshakeTimeout = time.Duration(*conf.Gateway.HandshakeTimeout)
@@ -59,7 +71,7 @@ func NewGateway(conf config.Config) *GatewayClient {
 		g := gateway.New(token, eventHandlerFunc, closeHandlerFUnc, opts...)
 		var sessionData redis.SessionData
 		exists, err := client.Redis.HGetAllAndParse(
-			fmt.Sprintf("%v:%v:%v", common.SessionKey, client.BotApplication.ID.String(), g.ShardID()),
+			fmt.Sprintf("%v:%v:%v", common.SessionKey, client.BotID, g.ShardID()),
 			&sessionData)
 		if err != nil {
 			log.Fatalf("unable to fetch session data: %v", err)
