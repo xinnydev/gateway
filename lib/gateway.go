@@ -90,7 +90,7 @@ func NewGateway(conf config.Config) *GatewayClient {
 func (c *GatewayClient) handleWsEvent(gatewayEventType gateway.EventType, sequenceNumber int, shardID int, event gateway.EventData) {
 	for _, listener := range common.Listeners {
 		if listener.ListenerInfo().Event == gatewayEventType {
-			listener.Run(event)
+			listener.Run(shardID, event)
 			break
 		}
 	}

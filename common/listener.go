@@ -15,7 +15,7 @@ type ListenerInfo struct {
 
 type Listener interface {
 	ListenerInfo() *ListenerInfo
-	Run(ev gateway.EventData)
+	Run(shardId int, ev gateway.EventData)
 }
 
 func RegisterListener(listener Listener) {

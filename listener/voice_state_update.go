@@ -15,7 +15,7 @@ type VoiceStateUpdateListener struct {
 	client lib.GatewayClient
 }
 
-func (l VoiceStateUpdateListener) Run(ev gateway.EventData) {
+func (l VoiceStateUpdateListener) Run(shardID int, ev gateway.EventData) {
 	data := ev.(gateway.EventVoiceStateUpdate)
 	ctx := context.Background()
 	guildId := data.GuildID.String()

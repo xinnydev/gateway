@@ -13,7 +13,7 @@ type UserUpdateListener struct {
 	client lib.GatewayClient
 }
 
-func (l UserUpdateListener) Run(ev gateway.EventData) {
+func (l UserUpdateListener) Run(shardID int, ev gateway.EventData) {
 	data := ev.(gateway.EventUserUpdate)
 	if _, err := l.client.Redis.Hset(fmt.Sprintf("%v:%v", common.BotUserKey, data.ID.String()), data.User); err != nil {
 		log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)

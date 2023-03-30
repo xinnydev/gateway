@@ -16,7 +16,7 @@ type GuildEmojisUpdateListener struct {
 	client lib.GatewayClient
 }
 
-func (l GuildEmojisUpdateListener) Run(ev gateway.EventData) {
+func (l GuildEmojisUpdateListener) Run(shardID int, ev gateway.EventData) {
 	ctx := context.Background()
 	data := ev.(gateway.EventGuildEmojisUpdate)
 	var emojis []discord.Emoji

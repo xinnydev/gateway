@@ -14,7 +14,7 @@ type ChannelPinsUpdateListener struct {
 	client lib.GatewayClient
 }
 
-func (l ChannelPinsUpdateListener) Run(ev gateway.EventData) {
+func (l ChannelPinsUpdateListener) Run(shardID int, ev gateway.EventData) {
 	data := ev.(gateway.EventChannelPinsUpdate)
 	ctx := context.Background()
 	if *l.client.Config.State.Channel {

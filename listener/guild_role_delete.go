@@ -14,7 +14,7 @@ type GuildRoleDeleteListener struct {
 	client lib.GatewayClient
 }
 
-func (l GuildRoleDeleteListener) Run(ev gateway.EventData) {
+func (l GuildRoleDeleteListener) Run(shardID int, ev gateway.EventData) {
 	data := ev.(gateway.EventGuildRoleDelete)
 	ctx := context.Background()
 	guildId := data.GuildID.String()

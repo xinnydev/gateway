@@ -13,7 +13,7 @@ type ChannelUpdateListener struct {
 	client lib.GatewayClient
 }
 
-func (l ChannelUpdateListener) Run(ev gateway.EventData) {
+func (l ChannelUpdateListener) Run(shardID int, ev gateway.EventData) {
 	data := ev.(gateway.EventChannelUpdate)
 	if *l.client.Config.State.Channel {
 		if data.Type() == discord.ChannelTypeDM {

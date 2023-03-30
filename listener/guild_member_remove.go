@@ -14,7 +14,7 @@ type GuildMemberRemoveListener struct {
 	client lib.GatewayClient
 }
 
-func (l GuildMemberRemoveListener) Run(ev gateway.EventData) {
+func (l GuildMemberRemoveListener) Run(shardID int, ev gateway.EventData) {
 	data := ev.(gateway.EventGuildMemberRemove)
 	ctx := context.Background()
 

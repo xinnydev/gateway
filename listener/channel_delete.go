@@ -14,7 +14,7 @@ type ChannelDeleteListener struct {
 	client lib.GatewayClient
 }
 
-func (l ChannelDeleteListener) Run(ev gateway.EventData) {
+func (l ChannelDeleteListener) Run(shardID int, ev gateway.EventData) {
 	data := ev.(gateway.EventChannelDelete)
 	ctx := context.Background()
 	if *l.client.Config.State.Channel {

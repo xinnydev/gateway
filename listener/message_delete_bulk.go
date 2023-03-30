@@ -15,7 +15,7 @@ type MessageDeleteBulkListener struct {
 	client lib.GatewayClient
 }
 
-func (l MessageDeleteBulkListener) Run(ev gateway.EventData) {
+func (l MessageDeleteBulkListener) Run(shardID int, ev gateway.EventData) {
 	ctx := context.Background()
 	data := ev.(gateway.EventMessageDeleteBulk)
 

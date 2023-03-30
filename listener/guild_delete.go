@@ -27,7 +27,7 @@ func (l GuildDeleteListener) clearGuildCache(guildId, redisKey string, data []st
 			SRem(ctx, fmt.Sprintf("%v%v", redisKey, common.KeysSuffix), v)
 	}
 }
-func (l GuildDeleteListener) Run(ev gateway.EventData) {
+func (l GuildDeleteListener) Run(shardID int, ev gateway.EventData) {
 	data := ev.(gateway.EventGuildDelete)
 	ctx := context.Background()
 	guildId := data.Guild.ID.String()

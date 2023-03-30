@@ -15,7 +15,7 @@ type MessageCreateListener struct {
 	client lib.GatewayClient
 }
 
-func (l MessageCreateListener) Run(ev gateway.EventData) {
+func (l MessageCreateListener) Run(shardID int, ev gateway.EventData) {
 	ctx := context.Background()
 	data := ev.(gateway.EventMessageCreate)
 	userId := data.Author.ID.String()

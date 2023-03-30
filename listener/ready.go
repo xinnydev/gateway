@@ -14,7 +14,7 @@ type ReadyListener struct {
 	client lib.GatewayClient
 }
 
-func (l ReadyListener) Run(ev gateway.EventData) {
+func (l ReadyListener) Run(shardID int, ev gateway.EventData) {
 	data := ev.(gateway.EventReady)
 	clientId := data.User.ID.String()
 	if _, err := l.client.Redis.Hset(fmt.Sprintf("%v:%v", common.BotUserKey, clientId), data.User); err != nil {

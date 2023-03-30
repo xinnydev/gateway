@@ -14,7 +14,7 @@ type ChannelCreateListener struct {
 	client lib.GatewayClient
 }
 
-func (l ChannelCreateListener) Run(ev gateway.EventData) {
+func (l ChannelCreateListener) Run(shardID int, ev gateway.EventData) {
 	data := ev.(gateway.EventChannelCreate)
 	ctx := context.Background()
 	if *l.client.Config.State.Channel {

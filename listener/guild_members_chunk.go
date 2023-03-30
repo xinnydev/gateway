@@ -15,7 +15,7 @@ type GuildMembersChunkListener struct {
 	client lib.GatewayClient
 }
 
-func (l GuildMembersChunkListener) Run(ev gateway.EventData) {
+func (l GuildMembersChunkListener) Run(shardID int, ev gateway.EventData) {
 	data := ev.(gateway.EventGuildMembersChunk)
 	ctx := context.Background()
 	guildId := data.GuildID.String()

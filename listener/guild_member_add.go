@@ -15,7 +15,7 @@ type GuildMemberAddListener struct {
 	client lib.GatewayClient
 }
 
-func (l GuildMemberAddListener) Run(ev gateway.EventData) {
+func (l GuildMemberAddListener) Run(shardID int, ev gateway.EventData) {
 	data := ev.(gateway.EventGuildMemberAdd)
 	ctx := context.Background()
 	guildId := data.GuildID.String()

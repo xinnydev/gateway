@@ -15,7 +15,7 @@ type GuildRoleUpdateListener struct {
 	client lib.GatewayClient
 }
 
-func (l GuildRoleUpdateListener) Run(ev gateway.EventData) {
+func (l GuildRoleUpdateListener) Run(shardID int, ev gateway.EventData) {
 	data := ev.(gateway.EventGuildRoleUpdate)
 	ctx := context.Background()
 	guildId := data.GuildID.String()

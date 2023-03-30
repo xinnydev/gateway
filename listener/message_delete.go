@@ -15,7 +15,7 @@ type MessageDeleteListener struct {
 	client lib.GatewayClient
 }
 
-func (l MessageDeleteListener) Run(ev gateway.EventData) {
+func (l MessageDeleteListener) Run(shardID int, ev gateway.EventData) {
 	ctx := context.Background()
 	data := ev.(gateway.EventMessageDelete)
 	guildId := data.GuildID.String()
@@ -39,7 +39,7 @@ func (l MessageDeleteListener) Run(ev gateway.EventData) {
 		log.Fatalf("[%v] Couldn't publish exchange: %v", l.ListenerInfo().Event, err)
 		return
 	}
-	
+
 	if *l.client.Config.State.Message {
 		if _, err := l.client.Redis.
 			SRem(ctx, fmt.Sprintf("%v%v", common.MessageKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, msgId)).
