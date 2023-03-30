@@ -84,7 +84,7 @@ func (c Client) ClearCache() {
 
 	for _, v := range patterns {
 		// Clear Hash
-		keys, err := c.ScanKeys(fmt.Sprintf("%v*", v))
+		keys, err := c.SMembers(context.Background(), fmt.Sprintf("%v%v", v, common.KeysSuffix)).Result()
 		if err != nil {
 			log.Fatalf("[clearCache] unable to scan keys: %v", err)
 		}
@@ -92,6 +92,11 @@ func (c Client) ClearCache() {
 			log.Infof("[clearCache] %v:* is empty", v)
 			continue
 		}
+
+		for i := 0; i < len(keys); i++ {
+			keys[i] = fmt.Sprintf("%v:%v", v, keys[i])
+		}
+
 		res, err := c.Unlink(context.Background(), keys...).Result()
 		if err != nil {
 			log.Fatalf("[clearCache] unable to unlink keys: %v", err)
@@ -107,27 +112,6 @@ func (c Client) ClearCache() {
 			log.Infof("[clearCache] unlinked %v %v%v", res, v, common.KeysSuffix)
 		}
 	}
-}
-
-func (c Client) ScanKeys(pattern string) (result []string, err error) {
-	ctx := context.Background()
-	if len(*c.config.URLs) > 1 {
-		cluster := (c.UniversalClient).(*redis.ClusterClient)
-		err = cluster.ForEachShard(ctx, func(ctx context.Context, node *redis.Client) error {
-			iter := node.Scan(ctx, 0, pattern, 0).Iterator()
-			for iter.Next(ctx) {
-				result = append(result, iter.Val())
-			}
-			return nil
-		})
-		return
-	}
-
-	iter := c.Scan(ctx, 0, pattern, 0).Iterator()
-	for iter.Next(ctx) {
-		result = append(result, iter.Val())
-	}
-	return
 }
 
 // HGetAllAndParse FIXME: This function may be inefficient but idfc, as long it works :handshake:
