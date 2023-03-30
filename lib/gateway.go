@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"github.com/disgoorg/disgo/discord"
@@ -34,17 +35,19 @@ func NewGateway(conf config.Config) *GatewayClient {
 		Config: &conf,
 	}
 
-	// Fetch session keys to decide whether clear the redis cache or no
-	sessionKeys, err := client.Redis.ScanKeys(fmt.Sprintf("%v*", common.SessionKey))
-	if err != nil {
-		log.Fatalf("couldn't fetch session keys: %v", err)
+	// Check for session
+	var sessionKeys []string
+	sessionKeysIterator := client.Redis.Scan(context.Background(), 0, fmt.Sprintf("%v:%v:*", common.SessionKey, client.BotID), 0).Iterator()
+	for sessionKeysIterator.Next(context.Background()) {
+		sessionKeys = append(sessionKeys, sessionKeysIterator.Val())
 	}
-	if len(sessionKeys) < 1 {
+
+	if len(sessionKeys) == 0 {
 		client.Redis.ClearCache()
 	}
 
 	// Declare the queue and the exchange
-	_, err = client.Broker.Channel.QueueDeclare(common.Exchange, false, false, false, false, nil)
+	_, err := client.Broker.Channel.QueueDeclare(common.Exchange, false, false, false, false, nil)
 	err = client.Broker.Channel.ExchangeDeclare(client.BotID, "direct", false, false, false, false, nil)
 	if err != nil {
 		log.Fatalf("couldn't declare amqp topic: %v", err)
