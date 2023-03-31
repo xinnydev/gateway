@@ -13,6 +13,7 @@ import (
 	"github.com/xinny/gateway/config"
 	"github.com/xinny/gateway/redis"
 	"strings"
+	"time"
 )
 
 type GatewayClient struct {
@@ -68,6 +69,9 @@ func NewGateway(conf config.Config) *GatewayClient {
 			gateway.WithLargeThreshold(*conf.Gateway.LargeThreshold),
 			gateway.WithPresenceOpts(gateway.WithOnlineStatus(*conf.Gateway.Presence.Status)),
 			func(gConf *gateway.Config) {
+				if conf.Gateway.HandshakeTimeout != nil {
+					gConf.Dialer.HandshakeTimeout = time.Duration(*conf.Gateway.HandshakeTimeout)
+				}
 				if conf.Gateway.Presence.Type != nil && conf.Gateway.Presence.Name != nil {
 					gConf.Presence.Activities = []discord.Activity{
 						{
