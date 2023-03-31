@@ -14,4 +14,5 @@ var (
 	PresenceKey string = "presence"
 	BotUserKey  string = "bot_user"
 	SessionKey  string = "session"
+	PingKey     string = "ping"
 )

@@ -38,9 +38,9 @@ type Client struct {
 
 func NewRedisClient(conf Config) *Client {
 	opts := &redis.UniversalOptions{
-		Addrs:         *conf.URLs,
-		RouteRandomly: true,
-		DB:            *conf.Db,
+		Addrs:          *conf.URLs,
+		RouteByLatency: true,
+		DB:             *conf.Db,
 	}
 
 	if conf.Username != nil {
@@ -173,4 +173,25 @@ firstLoop:
 		return true, err
 	}
 	return true, nil
+}
+
+func (c Client) ScanKeys(pattern string) (result []string, err error) {
+	ctx := context.Background()
+	if len(*c.config.URLs) > 1 {
+		cluster := (c.UniversalClient).(*redis.ClusterClient)
+		err = cluster.ForEachShard(ctx, func(ctx context.Context, node *redis.Client) error {
+			iter := node.Scan(ctx, 0, pattern, 0).Iterator()
+			for iter.Next(ctx) {
+				result = append(result, iter.Val())
+			}
+			return nil
+		})
+		return
+	}
+
+	iter := c.Scan(ctx, 0, pattern, 0).Iterator()
+	for iter.Next(ctx) {
+		result = append(result, iter.Val())
+	}
+	return
 }

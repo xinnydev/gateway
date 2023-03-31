@@ -1,7 +1,6 @@
 package lib
 
 import (
-	"context"
 	"encoding/base64"
 	"fmt"
 	"github.com/disgoorg/disgo/discord"
@@ -36,11 +35,7 @@ func NewGateway(conf config.Config) *GatewayClient {
 	}
 
 	// Check for session
-	var sessionKeys []string
-	sessionKeysIterator := client.Redis.Scan(context.Background(), 0, fmt.Sprintf("%v:%v:*", common.SessionKey, client.BotID), 0).Iterator()
-	for sessionKeysIterator.Next(context.Background()) {
-		sessionKeys = append(sessionKeys, sessionKeysIterator.Val())
-	}
+	sessionKeys, _ := client.Redis.ScanKeys(fmt.Sprintf("%v:%v:*", common.SessionKey, client.BotID))
 
 	if len(sessionKeys) == 0 {
 		client.Redis.ClearCache()
@@ -55,27 +50,17 @@ func NewGateway(conf config.Config) *GatewayClient {
 
 	// Declare ShardManager
 	client.ShardManager = sharding.New(*conf.DiscordToken, client.handleWsEvent,
-		sharding.WithGatewayConfigOpts(
-			func(config *gateway.Config) {
-				config.Intents = *conf.Gateway.Intents
-				config.EnableRawEvents = true
-				config.Compress = true
-				config.LargeThreshold = *conf.Gateway.LargeThreshold
-				config.Presence = &gateway.MessageDataPresenceUpdate{
-					Status: *conf.Gateway.Presence.Status,
-				}
-
-				if conf.Gateway.Presence.Type != nil && conf.Gateway.Presence.Name != nil {
-					config.Presence.Activities = []discord.Activity{
-						{
-							Name: *conf.Gateway.Presence.Name,
-							Type: discord.ActivityType(*conf.Gateway.Presence.Type),
-						},
-					}
-				}
-			}), func(shardConf *sharding.Config) {
+		func(shardConf *sharding.Config) {
 			shardConf.GatewayCreateFunc = client.createGatewayFunc
 			shardConf.ShardCount = *conf.Gateway.ShardCount
+			if shardConf.ShardCount > 0 && conf.Gateway.ShardStart == nil && conf.Gateway.ShardEnd == nil {
+				log.Fatalf("unable to open shard because ShardStart & ShardEnd aren't specified")
+			} else if shardConf.ShardCount == 0 {
+				shardConf.ShardIDs = map[int]struct{}{
+					0: {},
+				}
+			}
+
 			if conf.Gateway.ShardStart != nil && conf.Gateway.ShardEnd != nil {
 				shardConf.ShardIDs = map[int]struct{}{}
 				for i := *conf.Gateway.ShardStart; i <= *conf.Gateway.ShardEnd; i++ {
@@ -88,6 +73,7 @@ func NewGateway(conf config.Config) *GatewayClient {
 }
 
 func (c *GatewayClient) handleWsEvent(gatewayEventType gateway.EventType, sequenceNumber int, shardID int, event gateway.EventData) {
+	log.Infof("%v", gatewayEventType)
 	for _, listener := range common.Listeners {
 		if listener.ListenerInfo().Event == gatewayEventType {
 			listener.Run(shardID, event)
@@ -102,6 +88,21 @@ func (c *GatewayClient) createGatewayFunc(token string, eventHandler gateway.Eve
 		opt(&options)
 	}
 
+	options.Intents = *c.Config.Gateway.Intents
+	options.Compress = true
+	options.LargeThreshold = *c.Config.Gateway.LargeThreshold
+	options.Presence = &gateway.MessageDataPresenceUpdate{
+		Status: *c.Config.Gateway.Presence.Status,
+	}
+
+	if c.Config.Gateway.Presence.Type != nil && c.Config.Gateway.Presence.Name != nil {
+		options.Presence.Activities = []discord.Activity{
+			{
+				Name: *c.Config.Gateway.Presence.Name,
+				Type: discord.ActivityType(*c.Config.Gateway.Presence.Type),
+			},
+		}
+	}
 	var sessionData redis.SessionData
 	exists, err := c.Redis.HGetAllAndParse(
 		fmt.Sprintf("%v:%v:%v", common.SessionKey, c.BotID, options.ShardID),
