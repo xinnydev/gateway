@@ -48,32 +48,41 @@ func NewGateway(conf config.Config) *GatewayClient {
 		log.Fatalf("couldn't declare amqp topic: %v", err)
 	}
 
+	// Calculate shard ids
+	var shardIds []int
+	if conf.Gateway.ShardStart != nil && conf.Gateway.ShardEnd != nil {
+		for i := *conf.Gateway.ShardStart; i <= *conf.Gateway.ShardEnd; i++ {
+			shardIds = append(shardIds, i)
+		}
+	}
+
 	// Declare ShardManager
 	client.ShardManager = sharding.New(*conf.DiscordToken, client.handleWsEvent,
-		func(shardConf *sharding.Config) {
-			shardConf.GatewayCreateFunc = client.createGatewayFunc
-			shardConf.ShardCount = *conf.Gateway.ShardCount
-			if shardConf.ShardCount > 0 && conf.Gateway.ShardStart == nil && conf.Gateway.ShardEnd == nil {
-				log.Fatalf("unable to open shard because ShardStart & ShardEnd aren't specified")
-			} else if shardConf.ShardCount == 0 {
-				shardConf.ShardIDs = map[int]struct{}{
-					0: {},
+		sharding.WithShardCount(*conf.Gateway.ShardCount),
+		sharding.WithAutoScaling(true),
+		sharding.WithGatewayCreateFunc(client.createGatewayFunc),
+		sharding.WithShardIDs(shardIds...),
+		sharding.WithGatewayConfigOpts(
+			gateway.WithIntents(*conf.Gateway.Intents),
+			gateway.WithCompress(true),
+			gateway.WithLargeThreshold(*conf.Gateway.LargeThreshold),
+			gateway.WithPresenceOpts(gateway.WithOnlineStatus(*conf.Gateway.Presence.Status)),
+			func(gConf *gateway.Config) {
+				if conf.Gateway.Presence.Type != nil && conf.Gateway.Presence.Name != nil {
+					gConf.Presence.Activities = []discord.Activity{
+						{
+							Name: *conf.Gateway.Presence.Name,
+							Type: discord.ActivityType(*conf.Gateway.Presence.Type),
+						},
+					}
 				}
-			}
-
-			if conf.Gateway.ShardStart != nil && conf.Gateway.ShardEnd != nil {
-				shardConf.ShardIDs = map[int]struct{}{}
-				for i := *conf.Gateway.ShardStart; i <= *conf.Gateway.ShardEnd; i++ {
-					shardConf.ShardIDs[i] = struct{}{}
-				}
-			}
-		})
+			},
+		))
 
 	return &client
 }
 
 func (c *GatewayClient) handleWsEvent(gatewayEventType gateway.EventType, sequenceNumber int, shardID int, event gateway.EventData) {
-	log.Infof("%v", gatewayEventType)
 	for _, listener := range common.Listeners {
 		if listener.ListenerInfo().Event == gatewayEventType {
 			listener.Run(shardID, event)
@@ -83,42 +92,27 @@ func (c *GatewayClient) handleWsEvent(gatewayEventType gateway.EventType, sequen
 }
 
 func (c *GatewayClient) createGatewayFunc(token string, eventHandler gateway.EventHandlerFunc, closeHandler gateway.CloseHandlerFunc, opts ...gateway.ConfigOpt) gateway.Gateway {
-	options := gateway.Config{}
-	for _, opt := range opts {
-		opt(&options)
-	}
-
-	options.Intents = *c.Config.Gateway.Intents
-	options.Compress = true
-	options.LargeThreshold = *c.Config.Gateway.LargeThreshold
-	options.Presence = &gateway.MessageDataPresenceUpdate{
-		Status: *c.Config.Gateway.Presence.Status,
-	}
-
-	if c.Config.Gateway.Presence.Type != nil && c.Config.Gateway.Presence.Name != nil {
-		options.Presence.Activities = []discord.Activity{
-			{
-				Name: *c.Config.Gateway.Presence.Name,
-				Type: discord.ActivityType(*c.Config.Gateway.Presence.Type),
-			},
-		}
-	}
+	g := gateway.New(token, eventHandler, closeHandler, opts...)
 	var sessionData redis.SessionData
 	exists, err := c.Redis.HGetAllAndParse(
-		fmt.Sprintf("%v:%v:%v", common.SessionKey, c.BotID, options.ShardID),
+		fmt.Sprintf("%v:%v:%v", common.SessionKey, c.BotID, g.ShardID()),
 		&sessionData)
+
 	if err != nil {
 		log.Fatalf("unable to fetch session data: %v", err)
 	}
 
-	if exists {
-		options.SessionID = &sessionData.SessionID
-		options.ResumeURL = &sessionData.ResumeURL
-		options.EnableResumeURL = true
-		log.Debugf("[%v/%v] resuming session: %v", options.ShardID, options.ShardCount, sessionData.SessionID)
+	if !exists {
+		return g
 	}
 
 	return gateway.New(token, eventHandler, closeHandler, func(config *gateway.Config) {
-		config = &options
+		for _, v := range opts {
+			v(config)
+		}
+		config.SessionID = &sessionData.SessionID
+		config.ResumeURL = &sessionData.ResumeURL
+		config.EnableResumeURL = true
+		log.Debugf("[%v/%v] resuming session: %v", config.ShardID, config.ShardCount, sessionData.SessionID)
 	})
 }
