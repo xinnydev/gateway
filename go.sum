@@ -11,6 +11,8 @@ github.com/disgoorg/disgo v0.15.3 h1:BLPn38jdvn1DigBsiQZIkWdLwSzCax4rUQkufOWzQ6w
 github.com/disgoorg/disgo v0.15.3/go.mod h1:hUkznOmm+f+owh/MuOBX0sDviQV5cL0FqcWbpIyV1Y0=
 github.com/disgoorg/disgo v0.15.4-0.20230329114152-1037f73a9303 h1:UqF+Tk54grAhFDQcvvQQsJ9GOXjFsvej2cbI7gCeUzc=
 github.com/disgoorg/disgo v0.15.4-0.20230329114152-1037f73a9303/go.mod h1:hUkznOmm+f+owh/MuOBX0sDviQV5cL0FqcWbpIyV1Y0=
+github.com/disgoorg/disgo v0.15.4-0.20230401173607-94621e3ddb62 h1:4RJBc0PttkAjkVdxIL6TymnjEgRJjfNaNyyYIxP/HQs=
+github.com/disgoorg/disgo v0.15.4-0.20230401173607-94621e3ddb62/go.mod h1:hUkznOmm+f+owh/MuOBX0sDviQV5cL0FqcWbpIyV1Y0=
 github.com/disgoorg/json v1.0.0 h1:kDhSM661fgIuNoZF3BO5/odaR5NSq80AWb937DH+Pdo=
 github.com/disgoorg/json v1.0.0/go.mod h1:BHDwdde0rpQFDVsRLKhma6Y7fTbQKub/zdGO5O9NqqA=
 github.com/disgoorg/log v1.2.0 h1:sqlXnu/ZKAlIlHV9IO+dbMto7/hCQ474vlIdMWk8QKo=
