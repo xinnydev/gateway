@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
-	"github.com/disgoorg/disgo/rest"
 	"github.com/disgoorg/disgo/sharding"
 	"github.com/disgoorg/log"
 	"github.com/xinny/gateway/broker"
@@ -21,7 +20,6 @@ import (
 type GatewayClient struct {
 	BotID        string
 	Broker       *broker.Broker
-	Rest         rest.Rest
 	ShardManager sharding.ShardManager
 	Redis        *redis.Client
 	Config       *config.Config
@@ -32,7 +30,6 @@ func NewGateway(conf config.Config) *GatewayClient {
 	client := GatewayClient{
 		BotID:  string(clientId),
 		Broker: broker.NewBroker(string(clientId), *conf.AMQPUrl),
-		Rest:   rest.New(rest.NewClient(*conf.DiscordToken)),
 		Redis:  redis.NewRedisClient(conf.Redis),
 		Config: &conf,
 	}
