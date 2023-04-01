@@ -12,9 +12,7 @@ import (
 
 func Run() {
 	var err error
-	if err = godotenv.Load(); err != nil {
-		panic(fmt.Sprintf("couldn't load .env file: %v", err))
-	}
+	_ = godotenv.Load()
 
 	conf, err := config.Init()
 	if err != nil {
