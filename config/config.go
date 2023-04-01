@@ -5,7 +5,6 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
-	"github.com/joho/godotenv"
 	"github.com/xinny/gateway/redis"
 )
 
@@ -43,10 +42,6 @@ type Config struct {
 }
 
 func Init() (conf Config, err error) {
-	err = godotenv.Load()
-	if err != nil {
-		return
-	}
 	conf = Config{}
 	if err := env.Parse(&conf); err != nil {
 		log.Fatalf("%+v\n", err)
