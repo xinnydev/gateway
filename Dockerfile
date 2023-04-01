@@ -4,9 +4,6 @@ WORKDIR /tmp/build
 
 COPY . .
 
-# Install needed deps
-RUN apk add --no-cache libc-dev vips-dev gcc g++ make
-
 # Build the project
 RUN go build
 
@@ -16,6 +13,9 @@ LABEL name "Xinny Gateway"
 LABEL maintainer "Xinny Developers <xinnydev@frutbits.org>"
 
 WORKDIR /app
+
+# Install needed deps
+RUN apk add --no-cache vips tini
 
 COPY --from=build-stage /tmp/build/gateway gateway
 
