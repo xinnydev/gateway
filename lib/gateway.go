@@ -56,7 +56,7 @@ func NewGateway(conf config.Config) *GatewayClient {
 		log.Fatalf("couldn't bind amqp queue: %v", err)
 	}
 
-	consumer, err := client.Broker.Channel.Consume(common.Exchange, "", false, false, false, false, nil)
+	consumer, err := client.Broker.Channel.Consume(common.Exchange, "send", true, false, false, false, nil)
 	if err != nil {
 		log.Fatalf("error consuming queue: %v", err)
 	}
@@ -65,6 +65,7 @@ func NewGateway(conf config.Config) *GatewayClient {
 		for v := range consumer {
 			var payload gateway.Message
 			err = json.Unmarshal(v.Body, &payload)
+			log.Infof("[%v] received ws send request with opcode: %v", common.Exchange, payload.Op)
 			if err != nil {
 				log.Warnf("[%v] couldn't unmarshal received ws consumer: %v", common.Exchange, err)
 				return
@@ -97,7 +98,7 @@ func NewGateway(conf config.Config) *GatewayClient {
 			gateway.WithPresenceOpts(gateway.WithOnlineStatus(*conf.Gateway.Presence.Status)),
 			func(gConf *gateway.Config) {
 				if conf.Gateway.HandshakeTimeout != nil {
-					gConf.Dialer.HandshakeTimeout = time.Duration(*conf.Gateway.HandshakeTimeout)
+					gConf.Dialer.HandshakeTimeout = time.Duration(*conf.Gateway.HandshakeTimeout) * time.Millisecond
 				}
 				if conf.Gateway.Presence.Type != nil && conf.Gateway.Presence.Name != nil {
 					gConf.Presence.Activities = []discord.Activity{
