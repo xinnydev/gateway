@@ -1,7 +1,9 @@
 package lib
 
 import (
+	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
@@ -49,6 +51,32 @@ func NewGateway(conf config.Config) *GatewayClient {
 		log.Fatalf("couldn't declare amqp topic: %v", err)
 	}
 
+	err = client.Broker.Channel.QueueBind(common.Exchange, "send", client.BotID, false, nil)
+	if err != nil {
+		log.Fatalf("couldn't bind amqp queue: %v", err)
+	}
+
+	consumer, err := client.Broker.Channel.Consume(common.Exchange, "send", true, false, false, false, nil)
+	if err != nil {
+		log.Fatalf("error consuming queue: %v", err)
+	}
+
+	go func() {
+		for v := range consumer {
+			var payload gateway.Message
+			err = json.Unmarshal(v.Body, &payload)
+			log.Infof("[%v] received ws send request with opcode: %v", common.Exchange, payload.Op)
+			if err != nil {
+				log.Warnf("[%v] couldn't unmarshal received ws consumer: %v", common.Exchange, err)
+				return
+			}
+			err := client.ShardManager.Shard(payload.S).Send(context.Background(), payload.Op, payload.D)
+			if err != nil {
+				log.Warnf("[%v] couldn't forward received payload: %v", common.Exchange, err)
+				return
+			}
+		}
+	}()
 	// Calculate shard ids
 	var shardIds []int
 	if conf.Gateway.ShardStart != nil && conf.Gateway.ShardEnd != nil {
@@ -70,7 +98,7 @@ func NewGateway(conf config.Config) *GatewayClient {
 			gateway.WithPresenceOpts(gateway.WithOnlineStatus(*conf.Gateway.Presence.Status)),
 			func(gConf *gateway.Config) {
 				if conf.Gateway.HandshakeTimeout != nil {
-					gConf.Dialer.HandshakeTimeout = time.Duration(*conf.Gateway.HandshakeTimeout)
+					gConf.Dialer.HandshakeTimeout = time.Duration(*conf.Gateway.HandshakeTimeout) * time.Millisecond
 				}
 				if conf.Gateway.Presence.Type != nil && conf.Gateway.Presence.Name != nil {
 					gConf.Presence.Activities = []discord.Activity{
