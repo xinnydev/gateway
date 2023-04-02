@@ -14,10 +14,12 @@ type RawListener struct {
 }
 
 func (l RawListener) Run(shardID int, ev gateway.EventData) {
-	if _, err := l.client.Redis.HSet(context.Background(),
-		fmt.Sprintf("%v:%v:%v", common.SessionKey, l.client.BotID, shardID), "last_seq",
-		l.client.ShardManager.Shard(shardID).LastSequenceReceived()).Result(); err != nil {
-		log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
+	if l.client.ShardManager.Shard(shardID).LastSequenceReceived() != nil {
+		if _, err := l.client.Redis.HSet(context.Background(),
+			fmt.Sprintf("%v:%v:%v", common.SessionKey, l.client.BotID, shardID), "last_seq",
+			*l.client.ShardManager.Shard(shardID).LastSequenceReceived()).Result(); err != nil {
+			log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
+		}
 	}
 }
 
