@@ -68,7 +68,7 @@ func (c Client) Hset(key string, input interface{}) (int64, error) {
 
 	data := common.IterateMapAndStringify(mappedData)
 	if len(data) == 0 {
-		log.Fatalf("[redis] unable to stringify the data. received length: %v", len(data))
+		log.Fatalf("[redis] unable to stringify the data. final map length: %v", len(data))
 	}
 
 	return c.HSet(context.Background(), key, data).Result()
