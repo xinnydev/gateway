@@ -74,6 +74,7 @@ func NewGateway(conf config.Config) *GatewayClient {
 			}
 		}
 	}()
+
 	// Calculate shard ids
 	var shardIds []int
 	if conf.Gateway.ShardStart != nil && conf.Gateway.ShardEnd != nil {
@@ -89,6 +90,7 @@ func NewGateway(conf config.Config) *GatewayClient {
 		sharding.WithGatewayCreateFunc(client.createGatewayFunc),
 		sharding.WithShardIDs(shardIds...),
 		sharding.WithGatewayConfigOpts(
+			gateway.WithEnableRawEvents(true),
 			gateway.WithIntents(*conf.Gateway.Intents),
 			gateway.WithCompress(true),
 			gateway.WithLargeThreshold(*conf.Gateway.LargeThreshold),

@@ -22,8 +22,9 @@ func (l ReadyListener) Run(shardID int, ev gateway.EventData) {
 	}
 
 	if _, err := l.client.Redis.Hset(fmt.Sprintf("%v:%v:%v", common.SessionKey, clientId, data.Shard[0]), redis.SessionData{
-		SessionID: data.SessionID,
-		ResumeURL: data.ResumeGatewayURL,
+		SessionID:      data.SessionID,
+		ResumeURL:      data.ResumeGatewayURL,
+		LastSequenceID: *l.client.ShardManager.Shard(shardID).LastSequenceReceived(),
 	}); err != nil {
 		log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 	}

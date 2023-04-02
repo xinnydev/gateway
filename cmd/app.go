@@ -24,6 +24,7 @@ func Run() {
 	log.SetLevel(log.LevelDebug)
 
 	// Register all listeners
+	listener.RegisterRawListener(gateway)
 	listener.RegisterHeartbeatAckListener(gateway)
 	listener.RegisterChannelCreateListener(gateway)
 	listener.RegisterChannelDeleteListener(gateway)
