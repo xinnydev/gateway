@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	Listeners []Listener
+	Listeners = map[string]Listener{}
 )
 
 type ListenerInfo struct {
@@ -19,6 +19,6 @@ type Listener interface {
 }
 
 func RegisterListener(listener Listener) {
-	Listeners = append(Listeners, listener)
+	Listeners[string(listener.ListenerInfo().Event)] = listener
 	log.Infof("registered listener: %v", listener.ListenerInfo().Event)
 }
