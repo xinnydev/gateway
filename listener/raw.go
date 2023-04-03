@@ -7,6 +7,7 @@ import (
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/json"
 	"github.com/disgoorg/log"
+	"github.com/xinny/gateway/broker"
 	"github.com/xinny/gateway/common"
 	"github.com/xinny/gateway/lib"
 )
@@ -58,7 +59,10 @@ func (l RawListener) Run(shardID int, ev gateway.EventData) {
 		}
 		break
 	default:
-		body, _ := json.Marshal(eventData)
+		body, _ := json.Marshal(&broker.PublishPayload{
+			ShardID: shardID,
+			Data:    data,
+		})
 		if err := l.client.Broker.Publish(string(data.EventType), body); err != nil {
 			log.Fatalf("[%v] Couldn't publish exchange: %v", l.ListenerInfo().Event, err)
 			return

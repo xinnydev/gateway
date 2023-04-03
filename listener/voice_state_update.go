@@ -7,6 +7,7 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
+	"github.com/xinny/gateway/broker"
 	"github.com/xinny/gateway/common"
 	"github.com/xinny/gateway/lib"
 )
@@ -34,12 +35,15 @@ func (l VoiceStateUpdateListener) Run(shardID int, ev gateway.EventData) {
 		oldPayload = nil
 	}
 
-	payload, _ := json.Marshal(struct {
-		Old *discord.VoiceState `json:"old,omitempty"`
-		discord.VoiceState
-	}{
-		Old:        oldPayload,
-		VoiceState: data.VoiceState,
+	payload, _ := json.Marshal(&broker.PublishPayload{
+		ShardID: shardID,
+		Data: struct {
+			Old *discord.VoiceState `json:"old,omitempty"`
+			discord.VoiceState
+		}{
+			Old:        oldPayload,
+			VoiceState: data.VoiceState,
+		},
 	})
 
 	if err := l.client.Broker.Publish(string(l.ListenerInfo().Event), payload); err != nil {

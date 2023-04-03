@@ -1,10 +1,12 @@
 package listener
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
+	"github.com/xinny/gateway/broker"
 	"github.com/xinny/gateway/common"
 	"github.com/xinny/gateway/lib"
 )
@@ -27,7 +29,10 @@ func (l ChannelUpdateListener) Run(shardID int, ev gateway.EventData) {
 		}
 	}
 
-	body, _ := data.MarshalJSON()
+	body, _ := json.Marshal(&broker.PublishPayload{
+		ShardID: shardID,
+		Data:    data,
+	})
 	if err := l.client.Broker.Publish(string(l.ListenerInfo().Event), body); err != nil {
 		log.Fatalf("[%v] Couldn't publish exchange: %v", l.ListenerInfo().Event, err)
 		return

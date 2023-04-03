@@ -7,6 +7,7 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
+	"github.com/xinny/gateway/broker"
 	"github.com/xinny/gateway/common"
 	"github.com/xinny/gateway/lib"
 	"strings"
@@ -85,12 +86,15 @@ func (l GuildDeleteListener) Run(shardID int, ev gateway.EventData) {
 			log.Fatalf("[%v] Guild cache expected to present", l.ListenerInfo().Event, err)
 		}
 
-		payload, _ := json.Marshal(struct {
-			Old discord.Guild `json:"old"`
-			gateway.EventGuildDelete
-		}{
-			EventGuildDelete: data,
-			Old:              oldGuild,
+		payload, _ := json.Marshal(&broker.PublishPayload{
+			ShardID: shardID,
+			Data: struct {
+				Old discord.Guild `json:"old"`
+				gateway.EventGuildDelete
+			}{
+				EventGuildDelete: data,
+				Old:              oldGuild,
+			},
 		})
 
 		if err := l.client.Broker.Publish(string(l.ListenerInfo().Event), payload); err != nil {

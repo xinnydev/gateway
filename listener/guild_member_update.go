@@ -7,6 +7,7 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
+	"github.com/xinny/gateway/broker"
 	"github.com/xinny/gateway/common"
 	"github.com/xinny/gateway/lib"
 )
@@ -27,12 +28,15 @@ func (l GuildMemberUpdateListener) Run(shardID int, ev gateway.EventData) {
 		log.Fatalf("[%v] Couldn't perform HGetAllAndParse: %v", l.ListenerInfo().Event, err)
 	}
 
-	body, _ := json.Marshal(struct {
-		Old discord.Member `json:"old"`
-		discord.Member
-	}{
-		Member: data.Member,
-		Old:    old,
+	body, _ := json.Marshal(&broker.PublishPayload{
+		ShardID: shardID,
+		Data: struct {
+			Old discord.Member `json:"old"`
+			discord.Member
+		}{
+			Member: data.Member,
+			Old:    old,
+		},
 	})
 	if err := l.client.Broker.Publish(string(l.ListenerInfo().Event), body); err != nil {
 		log.Fatalf("[%v] Couldn't publish exchange: %v", l.ListenerInfo().Event, err)

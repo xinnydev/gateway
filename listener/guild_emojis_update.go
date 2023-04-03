@@ -7,6 +7,7 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
+	"github.com/xinny/gateway/broker"
 	"github.com/xinny/gateway/common"
 	"github.com/xinny/gateway/lib"
 	"strings"
@@ -78,12 +79,15 @@ func (l GuildEmojisUpdateListener) Run(shardID int, ev gateway.EventData) {
 		}
 	}
 
-	payload, _ := json.Marshal(struct {
-		Old []discord.Emoji `json:"old"`
-		gateway.EventGuildEmojisUpdate
-	}{
-		EventGuildEmojisUpdate: data,
-		Old:                    emojis,
+	payload, _ := json.Marshal(&broker.PublishPayload{
+		ShardID: shardID,
+		Data: struct {
+			Old []discord.Emoji `json:"old"`
+			gateway.EventGuildEmojisUpdate
+		}{
+			EventGuildEmojisUpdate: data,
+			Old:                    emojis,
+		},
 	})
 
 	if err := l.client.Broker.Publish(string(l.ListenerInfo().Event), payload); err != nil {

@@ -7,6 +7,7 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
+	"github.com/xinny/gateway/broker"
 	"github.com/xinny/gateway/common"
 	"github.com/xinny/gateway/lib"
 )
@@ -27,12 +28,15 @@ func (l MessageDeleteListener) Run(shardID int, ev gateway.EventData) {
 		log.Fatalf("[%v] Couldn't perform HGetAllAndParse: %v", l.ListenerInfo().Event, err)
 	}
 
-	body, _ := json.Marshal(struct {
-		Old discord.Message `json:"old"`
-		gateway.EventMessageDelete
-	}{
-		Old:                old,
-		EventMessageDelete: data,
+	body, _ := json.Marshal(&broker.PublishPayload{
+		ShardID: shardID,
+		Data: struct {
+			Old discord.Message `json:"old"`
+			gateway.EventMessageDelete
+		}{
+			Old:                old,
+			EventMessageDelete: data,
+		},
 	})
 
 	if err := l.client.Broker.Publish(string(l.ListenerInfo().Event), body); err != nil {

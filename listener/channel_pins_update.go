@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
+	"github.com/xinny/gateway/broker"
 	"github.com/xinny/gateway/common"
 	"github.com/xinny/gateway/lib"
 )
@@ -40,7 +41,11 @@ func (l ChannelPinsUpdateListener) Run(shardID int, ev gateway.EventData) {
 			}
 		}
 	}
-	body, _ := json.Marshal(data)
+
+	body, _ := json.Marshal(&broker.PublishPayload{
+		ShardID: shardID,
+		Data:    data,
+	})
 	if err := l.client.Broker.Publish(string(l.ListenerInfo().Event), body); err != nil {
 		log.Fatalf("[%v] Couldn't publish exchange: %v", l.ListenerInfo().Event, err)
 		return

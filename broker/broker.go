@@ -7,6 +7,11 @@ import (
 	"github.com/streadway/amqp"
 )
 
+type PublishPayload struct {
+	ShardID int         `json:"shard_id"`
+	Data    interface{} `json:"data"`
+}
+
 type Broker struct {
 	Conn         *amqp.Connection
 	Channel      *amqp.Channel
