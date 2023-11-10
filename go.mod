@@ -8,8 +8,8 @@ require (
 	github.com/disgoorg/json v1.1.0
 	github.com/disgoorg/log v1.2.1
 	github.com/joho/godotenv v1.5.1
+	github.com/rabbitmq/amqp091-go v1.9.0
 	github.com/redis/go-redis/v9 v9.0.2
-	github.com/streadway/amqp v1.0.0
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
 )
 

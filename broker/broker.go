@@ -4,7 +4,7 @@ import (
 	log "github.com/disgoorg/log"
 	"time"
 
-	"github.com/streadway/amqp"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type PublishPayload struct {
