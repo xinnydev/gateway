@@ -146,6 +146,19 @@ func (c *GatewayClient) Client() *GatewayClient {
 	return c
 }
 
-func (c *GatewayClient) GenKey(string ...string) string {
-	return utils.GenerateKey(c.BotID, string...)
+func (c *GatewayClient) GenKey(str ...string) string {
+	if len(str) > 1 && str[1] == common.KeysSuffix {
+		str[0] = fmt.Sprintf("%s%s", str[0], common.KeysSuffix)
+		str[1] = ""
+	}
+	str = append([]string{c.BotID}, str...)
+
+	var sanitized []string
+	for _, s := range str {
+		if s != "" {
+			sanitized = append(sanitized, s)
+		}
+	}
+
+	return utils.GenerateKey(sanitized...)
 }
