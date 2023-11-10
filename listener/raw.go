@@ -34,35 +34,11 @@ func (l RawListener) Run(shardID int, ev gateway.EventData) {
 	}
 	eventData, _ := gateway.UnmarshalEventData(buf.Bytes(), data.EventType)
 
-	switch data.EventType {
-	case gateway.EventTypeChannelCreate:
-	case gateway.EventTypeChannelDelete:
-	case gateway.EventTypeChannelPinsUpdate:
-	case gateway.EventTypeChannelUpdate:
-	case gateway.EventTypeGuildCreate:
-	case gateway.EventTypeGuildDelete:
-	case gateway.EventTypeGuildEmojisUpdate:
-	case gateway.EventTypeGuildMemberAdd:
-	case gateway.EventTypeGuildMemberRemove:
-	case gateway.EventTypeGuildMemberUpdate:
-	case gateway.EventTypeGuildMembersChunk:
-	case gateway.EventTypeGuildRoleCreate:
-	case gateway.EventTypeGuildRoleDelete:
-	case gateway.EventTypeGuildRoleUpdate:
-	case gateway.EventTypeGuildUpdate:
-	case gateway.EventTypeHeartbeatAck:
-	case gateway.EventTypeMessageCreate:
-	case gateway.EventTypeMessageDelete:
-	case gateway.EventTypeMessageDeleteBulk:
-	case gateway.EventTypeReady:
-	case gateway.EventTypeUserUpdate:
-	case gateway.EventTypeVoiceStateUpdate:
-		rawEventHandler, ok := common.Listeners[string(data.EventType)]
-		if ok {
-			rawEventHandler.Run(shardID, eventData)
-		}
-		break
-	default:
+	rawEventHandler, ok := common.Listeners[string(data.EventType)]
+	if ok {
+		rawEventHandler.Run(shardID, eventData)
+	} else {
+		// Unhandled events
 		body, _ := json.Marshal(&broker.PublishPayload{
 			ShardID: shardID,
 			Data:    data,
