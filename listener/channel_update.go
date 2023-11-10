@@ -2,7 +2,6 @@ package listener
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
@@ -17,13 +16,15 @@ type ChannelUpdateListener struct {
 
 func (l ChannelUpdateListener) Run(shardID int, ev gateway.EventData) {
 	data := ev.(gateway.EventChannelUpdate)
+	channelId := data.ID().String()
 	if *l.client.Config.State.Channel {
 		if data.Type() == discord.ChannelTypeDM {
-			if _, err := l.client.Redis.Hset(fmt.Sprintf("%v:%v", common.ChannelKey, data.ID()), data); err != nil {
+			if _, err := l.client.Redis.Hset(l.client.GenKey(common.ChannelKey, channelId), data); err != nil {
 				log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 			}
 		} else {
-			if _, err := l.client.Redis.Hset(fmt.Sprintf("%v:%v:%v", common.ChannelKey, data.GuildID(), data.ID()), data); err != nil {
+			guildId := data.GuildID().String()
+			if _, err := l.client.Redis.Hset(l.client.GenKey(common.ChannelKey, guildId, channelId), data); err != nil {
 				log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 			}
 		}

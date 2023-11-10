@@ -3,7 +3,6 @@ package listener
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
@@ -23,7 +22,7 @@ func (l MessageDeleteListener) Run(shardID int, ev gateway.EventData) {
 	msgId := data.ID.String()
 
 	var old discord.Message
-	_, err := l.client.Redis.HGetAllAndParse(fmt.Sprintf("%v:%v:%v", common.MessageKey, guildId, msgId), &old)
+	_, err := l.client.Redis.HGetAllAndParse(l.client.GenKey(common.MessageKey, guildId, msgId), &old)
 	if err != nil {
 		log.Fatalf("[%v] Couldn't perform HGetAllAndParse: %v", l.ListenerInfo().Event, err)
 	}
@@ -46,13 +45,13 @@ func (l MessageDeleteListener) Run(shardID int, ev gateway.EventData) {
 
 	if *l.client.Config.State.Message {
 		if _, err := l.client.Redis.
-			SRem(ctx, fmt.Sprintf("%v%v", common.MessageKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, msgId)).
+			SRem(ctx, l.client.GenKey(common.MessageKey, common.KeysSuffix, guildId), msgId).
 			Result(); err != nil {
 			log.Fatalf("[%v] Couldn't perform SREM: %v", l.ListenerInfo().Event, err)
 		}
 
 		if _, err := l.client.Redis.
-			Unlink(ctx, fmt.Sprintf("%v:%v:%v", common.MessageKey, guildId, msgId)).
+			Unlink(ctx, l.client.GenKey(common.MessageKey, guildId, msgId)).
 			Result(); err != nil {
 			log.Fatalf("[%v] Couldn't perform UNLINK: %v", l.ListenerInfo().Event, err)
 		}

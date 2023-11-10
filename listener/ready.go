@@ -2,13 +2,13 @@ package listener
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
 	"github.com/xinny/gateway/broker"
 	"github.com/xinny/gateway/common"
 	"github.com/xinny/gateway/lib"
 	"github.com/xinny/gateway/redis"
+	"strconv"
 )
 
 type ReadyListener struct {
@@ -17,12 +17,11 @@ type ReadyListener struct {
 
 func (l ReadyListener) Run(shardID int, ev gateway.EventData) {
 	data := ev.(gateway.EventReady)
-	clientId := data.User.ID.String()
-	if _, err := l.client.Redis.Hset(fmt.Sprintf("%v:%v", common.BotUserKey, clientId), data.User); err != nil {
+	if _, err := l.client.Redis.Hset(l.client.GenKey(common.BotUserKey), data.User); err != nil {
 		log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 	}
 
-	if _, err := l.client.Redis.Hset(fmt.Sprintf("%v:%v:%v", common.SessionKey, clientId, data.Shard[0]), redis.SessionData{
+	if _, err := l.client.Redis.Hset(l.client.GenKey(common.SessionKey, strconv.Itoa(data.Shard[0])), redis.SessionData{
 		SessionID:      data.SessionID,
 		ResumeURL:      data.ResumeGatewayURL,
 		LastSequenceID: *l.client.ShardManager.Shard(shardID).LastSequenceReceived(),

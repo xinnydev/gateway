@@ -2,7 +2,6 @@ package listener
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
@@ -20,7 +19,7 @@ func (l GuildUpdateListener) Run(shardID int, ev gateway.EventData) {
 	guildId := data.Guild.ID.String()
 
 	var old discord.Guild
-	_, err := l.client.Redis.HGetAllAndParse(fmt.Sprintf("%v:%v", common.GuildKey, guildId), &old)
+	_, err := l.client.Redis.HGetAllAndParse(l.client.GenKey(common.GuildKey, guildId), &old)
 	if err != nil {
 		log.Fatalf("[%v] Couldn't perform HGetAllAndParse: %v", l.ListenerInfo().Event, err)
 	}
@@ -41,7 +40,7 @@ func (l GuildUpdateListener) Run(shardID int, ev gateway.EventData) {
 	}
 
 	if _, err := l.client.Redis.
-		Hset(fmt.Sprintf("%v:%v", common.GuildKey, data.ID.String()), data.Guild); err != nil {
+		Hset(l.client.GenKey(common.GuildKey, data.ID.String()), data.Guild); err != nil {
 		log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 	}
 }

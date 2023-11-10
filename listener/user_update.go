@@ -2,7 +2,6 @@ package listener
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
 	"github.com/xinny/gateway/broker"
@@ -16,7 +15,7 @@ type UserUpdateListener struct {
 
 func (l UserUpdateListener) Run(shardID int, ev gateway.EventData) {
 	data := ev.(gateway.EventUserUpdate)
-	if _, err := l.client.Redis.Hset(fmt.Sprintf("%v:%v", common.BotUserKey, data.ID.String()), data.User); err != nil {
+	if _, err := l.client.Redis.Hset(l.client.GenKey(common.BotUserKey), data.User); err != nil {
 		log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 	}
 

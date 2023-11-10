@@ -3,7 +3,6 @@ package listener
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
@@ -19,22 +18,24 @@ type ChannelDeleteListener struct {
 func (l ChannelDeleteListener) Run(shardID int, ev gateway.EventData) {
 	data := ev.(gateway.EventChannelDelete)
 	ctx := context.Background()
+	channelId := data.ID().String()
 	if *l.client.Config.State.Channel {
 		if data.Type() == discord.ChannelTypeDM {
-			if _, err := l.client.Redis.SRem(ctx, fmt.Sprintf("%v%v", common.ChannelKey, common.KeysSuffix), data.ID()).Result(); err != nil {
+			if _, err := l.client.Redis.SRem(ctx, l.client.GenKey(common.ChannelKey, common.KeysSuffix), channelId).Result(); err != nil {
 				log.Fatalf("[%v] Couldn't perform SREM: %v", l.ListenerInfo().Event, err)
 			}
-			if _, err := l.client.Redis.Unlink(ctx, fmt.Sprintf("%v:%v", common.ChannelKey, data.ID())).Result(); err != nil {
+			if err := l.client.Redis.Unlink(ctx, l.client.GenKey(common.ChannelKey, channelId)); err != nil {
 				log.Fatalf("[%v] Couldn't perform UNLINK: %v", l.ListenerInfo().Event, err)
 			}
 		} else {
+			guildId := data.GuildID().String()
 			if _, err := l.client.Redis.SRem(
-				ctx,
-				fmt.Sprintf("%v%v", common.ChannelKey, common.KeysSuffix),
-				fmt.Sprintf("%v:%v", data.GuildID(), data.ID())).Result(); err != nil {
+				context.Background(),
+				l.client.GenKey(common.ChannelKey, common.KeysSuffix, guildId),
+				channelId).Result(); err != nil {
 				log.Fatalf("[%v] Couldn't perform SREM: %v", l.ListenerInfo().Event, err)
 			}
-			if _, err := l.client.Redis.Unlink(ctx, fmt.Sprintf("%v:%v:%v", common.ChannelKey, data.GuildID(), data.ID())).Result(); err != nil {
+			if err := l.client.Redis.Unlink(ctx, l.client.GenKey(common.ChannelKey, common.KeysSuffix, guildId, channelId)); err != nil {
 				log.Fatalf("[%v] Couldn't perform UNLINK: %v", l.ListenerInfo().Event, err)
 			}
 		}

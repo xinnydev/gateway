@@ -3,13 +3,13 @@ package listener
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/json"
 	"github.com/disgoorg/log"
 	"github.com/xinny/gateway/broker"
 	"github.com/xinny/gateway/common"
 	"github.com/xinny/gateway/lib"
+	"strconv"
 )
 
 type RawListener struct {
@@ -20,14 +20,18 @@ func (l RawListener) Run(shardID int, ev gateway.EventData) {
 	data := ev.(gateway.EventRaw)
 	if l.client.ShardManager.Shard(shardID).LastSequenceReceived() != nil {
 		if _, err := l.client.Redis.HSet(context.Background(),
-			fmt.Sprintf("%v:%v:%v", common.SessionKey, l.client.BotID, shardID), "last_seq",
+			l.client.GenKey(common.SessionKey, strconv.Itoa(shardID)), "last_seq",
 			*l.client.ShardManager.Shard(shardID).LastSequenceReceived()).Result(); err != nil {
 			log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 		}
 	}
 
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(data.Payload)
+	_, err := buf.ReadFrom(data.Payload)
+	if err != nil {
+		log.Errorf("[%v] Couldn't parse payload: %v", l.ListenerInfo().Event, err)
+		return
+	}
 	eventData, _ := gateway.UnmarshalEventData(buf.Bytes(), data.EventType)
 
 	switch data.EventType {

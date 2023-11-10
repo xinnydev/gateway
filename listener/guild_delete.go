@@ -3,7 +3,6 @@ package listener
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
@@ -23,46 +22,46 @@ func (l GuildDeleteListener) clearGuildCache(guildId, redisKey string, data []st
 		if !strings.HasPrefix(v, guildId) {
 			continue
 		}
-		l.client.Redis.Unlink(ctx, fmt.Sprintf("%v:%v", redisKey, v))
+		l.client.Redis.Unlink(ctx, l.client.GenKey(redisKey, guildId))
 		l.client.Redis.
-			SRem(ctx, fmt.Sprintf("%v%v", redisKey, common.KeysSuffix), v)
+			SRem(ctx, l.client.GenKey(redisKey, common.KeysSuffix, guildId), v)
 	}
 }
 func (l GuildDeleteListener) Run(shardID int, ev gateway.EventData) {
 	data := ev.(gateway.EventGuildDelete)
 	ctx := context.Background()
 	guildId := data.Guild.ID.String()
-	roles, err := l.client.Redis.SMembers(ctx, fmt.Sprintf("%v%v", common.RoleKey, common.KeysSuffix)).
+	roles, err := l.client.Redis.SMembers(ctx, l.client.GenKey(common.RoleKey, common.KeysSuffix, guildId)).
 		Result()
 	if err != nil {
 		log.Fatalf("[%v] Couldn't perform SMEMBERS: %v", l.ListenerInfo().Event, err)
 	}
 
-	members, err := l.client.Redis.SMembers(ctx, fmt.Sprintf("%v%v", common.MemberKey, common.KeysSuffix)).
+	members, err := l.client.Redis.SMembers(ctx, l.client.GenKey(common.MemberKey, common.KeysSuffix, guildId)).
 		Result()
 	if err != nil {
 		log.Fatalf("[%v] Couldn't perform SMEMBERS: %v", l.ListenerInfo().Event, err)
 	}
 
-	users, err := l.client.Redis.SMembers(ctx, fmt.Sprintf("%v%v", common.UserKey, common.KeysSuffix)).
+	users, err := l.client.Redis.SMembers(ctx, l.client.GenKey(common.UserKey, common.KeysSuffix, guildId)).
 		Result()
 	if err != nil {
 		log.Fatalf("[%v] Couldn't perform SMEMBERS: %v", l.ListenerInfo().Event, err)
 	}
 
-	channels, err := l.client.Redis.SMembers(ctx, fmt.Sprintf("%v%v", common.ChannelKey, common.KeysSuffix)).
+	channels, err := l.client.Redis.SMembers(ctx, l.client.GenKey(common.ChannelKey, common.KeysSuffix, guildId)).
 		Result()
 	if err != nil {
 		log.Fatalf("[%v] Couldn't perform SMEMBERS: %v", l.ListenerInfo().Event, err)
 	}
 
-	voices, err := l.client.Redis.SMembers(ctx, fmt.Sprintf("%v%v", common.VoiceKey, common.KeysSuffix)).
+	voices, err := l.client.Redis.SMembers(ctx, l.client.GenKey(common.VoiceKey, common.KeysSuffix, guildId)).
 		Result()
 	if err != nil {
 		log.Fatalf("[%v] Couldn't perform SMEMBERS: %v", l.ListenerInfo().Event, err)
 	}
 
-	presences, err := l.client.Redis.SMembers(ctx, fmt.Sprintf("%v%v", common.PresenceKey, common.KeysSuffix)).
+	presences, err := l.client.Redis.SMembers(ctx, l.client.GenKey(common.PresenceKey, common.KeysSuffix, guildId)).
 		Result()
 	if err != nil {
 		log.Fatalf("[%v] Couldn't perform SMEMBERS: %v", l.ListenerInfo().Event, err)
@@ -77,7 +76,7 @@ func (l GuildDeleteListener) Run(shardID int, ev gateway.EventData) {
 
 	if !data.Unavailable {
 		var oldGuild discord.Guild
-		exists, err := l.client.Redis.HGetAllAndParse(fmt.Sprintf("%v:%v", common.GuildKey, guildId), &oldGuild)
+		exists, err := l.client.Redis.HGetAllAndParse(l.client.GenKey(common.GuildKey, guildId), &oldGuild)
 		if err != nil {
 			log.Fatalf("[%v] Couldn't perform HGetAllAndParse: %v", l.ListenerInfo().Event, err)
 		}
@@ -104,12 +103,12 @@ func (l GuildDeleteListener) Run(shardID int, ev gateway.EventData) {
 	}
 
 	if _, err := l.client.Redis.
-		SRem(ctx, fmt.Sprintf("%v%v", common.GuildKey, common.KeysSuffix), guildId).Result(); err != nil {
+		SRem(ctx, l.client.GenKey(common.GuildKey, common.KeysSuffix), guildId).Result(); err != nil {
 		log.Fatalf("[%v] Couldn't perform SREM: %v", l.ListenerInfo().Event, err)
 	}
 
 	if _, err := l.client.Redis.
-		Unlink(ctx, fmt.Sprintf("%v:%v", common.GuildKey, common.GuildKey)).Result(); err != nil {
+		Unlink(ctx, l.client.GenKey(common.GuildKey, common.GuildKey)).Result(); err != nil {
 		log.Fatalf("[%v] Couldn't perform UNLINK: %v", l.ListenerInfo().Event, err)
 	}
 }

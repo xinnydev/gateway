@@ -3,7 +3,6 @@ package listener
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
@@ -19,17 +18,18 @@ type MessageDeleteBulkListener struct {
 func (l MessageDeleteBulkListener) Run(shardID int, ev gateway.EventData) {
 	ctx := context.Background()
 	data := ev.(gateway.EventMessageDeleteBulk)
+	guildId := data.GuildID.String()
 
 	if *l.client.Config.State.Message {
 		var messages []discord.Message
-		keys, err := l.client.Redis.SMembers(ctx, fmt.Sprintf("%v%v", common.MessageKey, common.KeysSuffix)).Result()
+		keys, err := l.client.Redis.SMembers(ctx, l.client.GenKey(common.MessageKey, common.KeysSuffix, guildId)).Result()
 		if err != nil {
 			log.Fatalf("[%v] Couldn't perform SMEMBERS: %v", l.ListenerInfo().Event, err)
 		}
 
 		for _, v := range keys {
 			var message discord.Message
-			exists, err := l.client.Redis.HGetAllAndParse(fmt.Sprintf("%v:%v", common.MessageKey, v), &message)
+			exists, err := l.client.Redis.HGetAllAndParse(l.client.GenKey(common.MessageKey, guildId, v), &message)
 			if err != nil {
 				log.Fatalf("[%v] Couldn't perform HGetAllAndParse: %v", l.ListenerInfo().Event, err)
 			}
@@ -37,12 +37,12 @@ func (l MessageDeleteBulkListener) Run(shardID int, ev gateway.EventData) {
 				for _, m := range data.IDs {
 					if m.String() == message.ID.String() {
 						if _, err := l.client.Redis.
-							SRem(ctx, fmt.Sprintf("%v%v", common.MessageKey, common.KeysSuffix), m).Result(); err != nil {
+							SRem(ctx, l.client.GenKey(common.MessageKey, common.KeysSuffix, guildId), m).Result(); err != nil {
 							log.Fatalf("[%v] Couldn't perform SREM: %v", l.ListenerInfo().Event, err)
 						}
 
 						if _, err := l.client.Redis.
-							Unlink(ctx, fmt.Sprintf("%v:%v", common.MessageKey, v)).Result(); err != nil {
+							Unlink(ctx, l.client.GenKey(common.MessageKey, guildId, v)).Result(); err != nil {
 							log.Fatalf("[%v] Couldn't perform UNLINK: %v", l.ListenerInfo().Event, err)
 						}
 						messages = append(messages, message)

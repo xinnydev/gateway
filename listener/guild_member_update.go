@@ -3,7 +3,6 @@ package listener
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
@@ -23,7 +22,7 @@ func (l GuildMemberUpdateListener) Run(shardID int, ev gateway.EventData) {
 	userId := data.User.ID.String()
 
 	var old discord.Member
-	_, err := l.client.Redis.HGetAllAndParse(fmt.Sprintf("%v:%v:%v", common.MemberKey, guildId, userId), &old)
+	_, err := l.client.Redis.HGetAllAndParse(l.client.GenKey(common.MemberKey, guildId, userId), &old)
 	if err != nil {
 		log.Fatalf("[%v] Couldn't perform HGetAllAndParse: %v", l.ListenerInfo().Event, err)
 	}
@@ -45,19 +44,19 @@ func (l GuildMemberUpdateListener) Run(shardID int, ev gateway.EventData) {
 
 	if *l.client.Config.State.User || data.User.ID.String() == l.client.BotID {
 		if _, err := l.client.Redis.
-			SAdd(ctx, fmt.Sprintf("%v%v", common.UserKey, common.KeysSuffix), userId).
+			SAdd(ctx, l.client.GenKey(common.UserKey, common.KeysSuffix), userId).
 			Result(); err != nil {
 			log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 		}
 		if _, err := l.client.Redis.
-			Hset(fmt.Sprintf("%v:%v", common.UserKey, userId), data.User); err != nil {
+			Hset(l.client.GenKey(common.UserKey, userId), data.User); err != nil {
 			log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 		}
 	}
 
 	if *l.client.Config.State.Member || data.User.ID.String() == l.client.BotID {
 		if _, err := l.client.Redis.
-			SAdd(ctx, fmt.Sprintf("%v%v", common.MemberKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, userId)).
+			SAdd(ctx, l.client.GenKey(common.MemberKey, common.KeysSuffix, guildId), userId).
 			Result(); err != nil {
 			log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 		}
@@ -68,7 +67,7 @@ func (l GuildMemberUpdateListener) Run(shardID int, ev gateway.EventData) {
 		}
 
 		if _, err := l.client.Redis.
-			Hset(fmt.Sprintf("%v:%v:%v", common.MemberKey, guildId, userId), toSet); err != nil {
+			Hset(l.client.GenKey(common.MemberKey, guildId, userId), toSet); err != nil {
 			log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 		}
 	}

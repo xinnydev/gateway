@@ -3,7 +3,6 @@ package listener
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
 	"github.com/xinny/gateway/broker"
@@ -22,13 +21,13 @@ func (l GuildRoleDeleteListener) Run(shardID int, ev gateway.EventData) {
 	roleId := data.RoleID.String()
 
 	if _, err := l.client.Redis.
-		SRem(ctx, fmt.Sprintf("%v%v", common.RoleKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, roleId)).
+		SRem(ctx, l.client.GenKey(common.RoleKey, common.KeysSuffix, guildId), roleId).
 		Result(); err != nil {
 		log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 	}
 
 	if _, err := l.client.Redis.
-		Unlink(ctx, fmt.Sprintf("%v:%v:%v", common.RoleKey, guildId, roleId)).Result(); err != nil {
+		Unlink(ctx, l.client.GenKey(common.RoleKey, guildId, roleId)).Result(); err != nil {
 		log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 	}
 

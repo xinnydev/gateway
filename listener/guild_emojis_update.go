@@ -3,7 +3,6 @@ package listener
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
@@ -20,15 +19,16 @@ type GuildEmojisUpdateListener struct {
 func (l GuildEmojisUpdateListener) Run(shardID int, ev gateway.EventData) {
 	ctx := context.Background()
 	data := ev.(gateway.EventGuildEmojisUpdate)
+	guildId := data.GuildID.String()
 	var emojis []discord.Emoji
-	keys, err := l.client.Redis.SMembers(ctx, fmt.Sprintf("%v%v", common.EmojiKey, common.KeysSuffix)).Result()
+	keys, err := l.client.Redis.SMembers(ctx, l.client.GenKey(common.EmojiKey, common.KeysSuffix, guildId)).Result()
 	if err != nil {
 		log.Fatalf("[%v] Couldn't perform SMEMBERS: %v", l.ListenerInfo().Event, err)
 	}
 
 	for _, v := range keys {
 		var emoji discord.Emoji
-		exists, err := l.client.Redis.HGetAllAndParse(fmt.Sprintf("%v:%v", common.EmojiKey, v), &emoji)
+		exists, err := l.client.Redis.HGetAllAndParse(l.client.GenKey(common.EmojiKey, guildId, v), &emoji)
 		if err != nil {
 			log.Fatalf("[%v] Couldn't perform HGetAllAndParse: %v", l.ListenerInfo().Event, err)
 		}
@@ -40,13 +40,13 @@ func (l GuildEmojisUpdateListener) Run(shardID int, ev gateway.EventData) {
 		for _, emoji := range data.Emojis {
 			if emoji.ID.String() == emoji.ID.String() {
 				if _, err := l.client.Redis.
-					SRem(ctx, fmt.Sprintf("%v%v", common.EmojiKey, common.KeysSuffix), v).
+					SRem(ctx, l.client.GenKey(common.EmojiKey, common.KeysSuffix, guildId), v).
 					Result(); err != nil {
 					log.Fatalf("[%v] Couldn't perform SREM: %v", l.ListenerInfo().Event, err)
 				}
 
 				if _, err := l.client.Redis.
-					Unlink(ctx, fmt.Sprintf("%v:%v", common.EmojiKey, v)).
+					Unlink(ctx, l.client.GenKey(common.EmojiKey, guildId, v)).
 					Result(); err != nil {
 					log.Fatalf("[%v] Couldn't perform UNLINK: %v", l.ListenerInfo().Event, err)
 				}
@@ -57,24 +57,24 @@ func (l GuildEmojisUpdateListener) Run(shardID int, ev gateway.EventData) {
 
 		if strings.HasPrefix(v, data.GuildID.String()) {
 			if _, err := l.client.Redis.
-				Unlink(ctx, fmt.Sprintf("%v:%v", common.EmojiKey, v)).
+				Unlink(ctx, l.client.GenKey(common.EmojiKey, guildId, v)).
 				Result(); err != nil {
 				log.Fatalf("[%v] Couldn't perform UNLINK: %v", l.ListenerInfo().Event, err)
 			}
 		}
 	}
 
-	for _, v := range data.Emojis {
+	for _, v := range emojis {
 		if _, err := l.client.Redis.
 			SAdd(ctx,
-				fmt.Sprintf("%v%v", common.EmojiKey, common.KeysSuffix),
-				fmt.Sprintf("%v:%v", data.GuildID.String(), v.ID.String())).
+				l.client.GenKey(common.EmojiKey, common.KeysSuffix, guildId),
+				v.ID.String()).
 			Result(); err != nil {
 			log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 		}
 
 		if _, err := l.client.Redis.
-			Hset(fmt.Sprintf("%v:%v:%v", common.EmojiKey, data.GuildID.String(), v.ID.String()), v); err != nil {
+			Hset(l.client.GenKey(common.EmojiKey, guildId, v.ID.String()), v); err != nil {
 			log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 		}
 	}

@@ -74,51 +74,6 @@ func (c Client) Hset(key string, input interface{}) (int64, error) {
 	return c.HSet(context.Background(), key, data).Result()
 }
 
-func (c Client) ClearCache() {
-	patterns := []string{
-		common.RoleKey,
-		common.MemberKey,
-		common.UserKey,
-		common.MessageKey,
-		common.VoiceKey,
-		common.GuildKey,
-		common.PresenceKey,
-		common.EmojiKey,
-		common.ChannelKey,
-		common.SessionKey}
-
-	for _, v := range patterns {
-		// Clear Hash
-		keys, err := c.SMembers(context.Background(), fmt.Sprintf("%v%v", v, common.KeysSuffix)).Result()
-		if err != nil {
-			log.Fatalf("[clearCache] unable to scan keys: %v", err)
-		}
-		if len(keys) < 1 {
-			log.Infof("[clearCache] %v:* is empty", v)
-			continue
-		}
-
-		for i := 0; i < len(keys); i++ {
-			keys[i] = fmt.Sprintf("%v:%v", v, keys[i])
-		}
-
-		res, err := c.Unlink(context.Background(), keys...).Result()
-		if err != nil {
-			log.Fatalf("[clearCache] unable to unlink keys: %v", err)
-		}
-		log.Infof("[clearCache] unlinked %v %v:*", res, v)
-
-		// Clear Set
-		res, err = c.Unlink(context.Background(), fmt.Sprintf("%v%v", v, common.KeysSuffix)).Result()
-		if err != nil {
-			log.Fatalf("[clearCache] unable to unlink keys: %v", err)
-		}
-		if res != 0 {
-			log.Infof("[clearCache] unlinked %v %v%v", res, v, common.KeysSuffix)
-		}
-	}
-}
-
 // HGetAllAndParse FIXME: This function may be inefficient but idfc, as long it works :handshake:
 // but, seriously, this need a refactor if someone found the better way
 func (c Client) HGetAllAndParse(key string, output interface{}) (exists bool, err error) {

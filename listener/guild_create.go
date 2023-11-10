@@ -3,7 +3,6 @@ package listener
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
@@ -20,7 +19,7 @@ func (l GuildCreateListener) Run(shardID int, ev gateway.EventData) {
 	data := ev.(gateway.EventGuildCreate)
 	guildId := data.ID.String()
 	ctx := context.Background()
-	oldData, err := l.client.Redis.Exists(ctx, fmt.Sprintf("%v:%v", common.GuildKey, data.ID.String())).Result()
+	oldData, err := l.client.Redis.Exists(ctx, l.client.GenKey(common.GuildKey, guildId)).Result()
 	if err != nil {
 		log.Fatalf("[%v] Couldn't perform EXISTS: %v", l.ListenerInfo().Event, err)
 	}
@@ -40,12 +39,12 @@ func (l GuildCreateListener) Run(shardID int, ev gateway.EventData) {
 		v.GuildID = data.ID
 		if *l.client.Config.State.User {
 			if _, err := l.client.Redis.
-				SAdd(ctx, fmt.Sprintf("%v%v", common.UserKey, common.KeysSuffix), v.User.ID.String()).
+				SAdd(ctx, l.client.GenKey(common.UserKey, common.KeysSuffix), v.User.ID.String()).
 				Result(); err != nil {
 				log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 			}
 			if _, err := l.client.Redis.
-				Hset(fmt.Sprintf("%v:%v", common.UserKey, v.User.ID.String()), v); err != nil {
+				Hset(l.client.GenKey(common.UserKey, v.User.ID.String()), v); err != nil {
 				log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 			}
 		}
@@ -58,12 +57,12 @@ func (l GuildCreateListener) Run(shardID int, ev gateway.EventData) {
 			}
 
 			if _, err := l.client.Redis.
-				SAdd(ctx, fmt.Sprintf("%v%v", common.MemberKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, memberId)).
+				SAdd(ctx, l.client.GenKey(common.MemberKey, common.KeysSuffix, guildId), memberId.String()).
 				Result(); err != nil {
 				log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 			}
 			if _, err := l.client.Redis.
-				Hset(fmt.Sprintf("%v:%v:%v", common.MemberKey, guildId, memberId), cloned); err != nil {
+				Hset(l.client.GenKey(common.MemberKey, common.KeysSuffix, guildId, memberId.String()), cloned); err != nil {
 				log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 			}
 		}
@@ -73,12 +72,12 @@ func (l GuildCreateListener) Run(shardID int, ev gateway.EventData) {
 		for _, v := range data.Roles {
 			v.GuildID = data.ID
 			if _, err := l.client.Redis.
-				SAdd(ctx, fmt.Sprintf("%v%v", common.RoleKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, v.ID.String())).
+				SAdd(ctx, l.client.GenKey(common.RoleKey, common.KeysSuffix, guildId), v.ID.String()).
 				Result(); err != nil {
 				log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 			}
 			if _, err := l.client.Redis.
-				Hset(fmt.Sprintf("%v:%v:%v", common.RoleKey, guildId, v.ID.String()), v); err != nil {
+				Hset(l.client.GenKey(common.RoleKey, guildId, v.ID.String()), v); err != nil {
 				log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 			}
 		}
@@ -88,12 +87,12 @@ func (l GuildCreateListener) Run(shardID int, ev gateway.EventData) {
 		for _, v := range data.VoiceStates {
 			v.GuildID = data.ID
 			if _, err := l.client.Redis.
-				SAdd(ctx, fmt.Sprintf("%v%v", common.VoiceKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, v.UserID.String())).
+				SAdd(ctx, l.client.GenKey(common.VoiceKey, common.KeysSuffix, guildId), v.UserID.String()).
 				Result(); err != nil {
 				log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 			}
 			if _, err := l.client.Redis.
-				Hset(fmt.Sprintf("%v:%v:%v", common.VoiceKey, guildId, v.UserID.String()), v); err != nil {
+				Hset(l.client.GenKey(common.VoiceKey, guildId, v.UserID.String()), v); err != nil {
 				log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 			}
 		}
@@ -110,12 +109,12 @@ func (l GuildCreateListener) Run(shardID int, ev gateway.EventData) {
 			stringified := common.IterateMapAndStringify(dataMap, "guild_id")
 			stringified = append(stringified, "guild_id", guildId)
 			if _, err := l.client.Redis.
-				SAdd(ctx, fmt.Sprintf("%v%v", common.ChannelKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, v.ID().String())).
+				SAdd(ctx, l.client.GenKey(common.ChannelKey, common.KeysSuffix, guildId), v.ID().String()).
 				Result(); err != nil {
 				log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 			}
 			if _, err := l.client.Redis.
-				HSet(ctx, fmt.Sprintf("%v:%v:%v", common.ChannelKey, guildId, v.ID().String()), stringified).
+				HSet(ctx, l.client.GenKey(common.ChannelKey, guildId, v.ID().String()), stringified).
 				Result(); err != nil {
 				log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 			}
@@ -125,12 +124,12 @@ func (l GuildCreateListener) Run(shardID int, ev gateway.EventData) {
 	if *l.client.Config.State.Emoji {
 		for _, v := range data.Emojis {
 			if _, err := l.client.Redis.
-				SAdd(ctx, fmt.Sprintf("%v%v", common.EmojiKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, v.ID.String())).
+				SAdd(ctx, l.client.GenKey(common.EmojiKey, common.KeysSuffix, guildId), v.ID.String()).
 				Result(); err != nil {
 				log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 			}
 			if _, err := l.client.Redis.
-				Hset(fmt.Sprintf("%v:%v:%v", common.EmojiKey, guildId, v.ID.String()), v); err != nil {
+				Hset(l.client.GenKey(common.EmojiKey, guildId, v.ID.String()), v); err != nil {
 				log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 			}
 		}
@@ -139,12 +138,12 @@ func (l GuildCreateListener) Run(shardID int, ev gateway.EventData) {
 	if *l.client.Config.State.Presence {
 		for _, v := range data.Presences {
 			if _, err := l.client.Redis.
-				SAdd(ctx, fmt.Sprintf("%v%v", common.PresenceKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, v.PresenceUser.ID.String())).
+				SAdd(ctx, l.client.GenKey(common.PresenceKey, common.KeysSuffix, guildId), v.PresenceUser.ID.String()).
 				Result(); err != nil {
 				log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 			}
 			if _, err := l.client.Redis.
-				Hset(fmt.Sprintf("%v:%v:%v", common.PresenceKey, guildId, v.PresenceUser.ID.String()), v); err != nil {
+				Hset(l.client.GenKey(common.PresenceKey, guildId, v.PresenceUser.ID.String()), v); err != nil {
 				log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 			}
 		}
@@ -158,12 +157,12 @@ func (l GuildCreateListener) Run(shardID int, ev gateway.EventData) {
 	data.Roles = []discord.Role{}
 
 	if _, err := l.client.Redis.
-		Hset(fmt.Sprintf("%v:%v", common.GuildKey, data.ID.String()), data); err != nil {
+		Hset(l.client.GenKey(common.GuildKey, data.ID.String()), data); err != nil {
 		log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 	}
 
 	if _, err := l.client.Redis.
-		SAdd(ctx, fmt.Sprintf("%v%v", common.GuildKey, common.KeysSuffix), guildId).Result(); err != nil {
+		SAdd(ctx, l.client.GenKey(common.GuildKey, common.KeysSuffix), guildId).Result(); err != nil {
 		log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 	}
 }

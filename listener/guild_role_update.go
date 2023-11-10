@@ -3,7 +3,6 @@ package listener
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/log"
@@ -24,18 +23,18 @@ func (l GuildRoleUpdateListener) Run(shardID int, ev gateway.EventData) {
 
 	if *l.client.Config.State.Role {
 		if _, err := l.client.Redis.
-			SAdd(ctx, fmt.Sprintf("%v%v", common.RoleKey, common.KeysSuffix), fmt.Sprintf("%v:%v", guildId, roleId)).
+			SAdd(ctx, l.client.GenKey(common.RoleKey, common.KeysSuffix, guildId), roleId).
 			Result(); err != nil {
 			log.Fatalf("[%v] Couldn't perform SADD: %v", l.ListenerInfo().Event, err)
 		}
 		if _, err := l.client.Redis.
-			Hset(fmt.Sprintf("%v:%v:%v", common.RoleKey, guildId, data.Role.ID.String()), data.Role); err != nil {
+			Hset(l.client.GenKey(common.RoleKey, guildId, data.Role.ID.String()), data.Role); err != nil {
 			log.Fatalf("[%v] Couldn't perform HSET: %v", l.ListenerInfo().Event, err)
 		}
 	}
 
 	var old *discord.Role
-	exists, err := l.client.Redis.HGetAllAndParse(fmt.Sprintf("%v:%v:%v", common.RoleKey, guildId, roleId), &old)
+	exists, err := l.client.Redis.HGetAllAndParse(l.client.GenKey(common.RoleKey, guildId, roleId), &old)
 	if err != nil {
 		log.Fatalf("[%v] Couldn't perform HGetAllAndParse: %v", l.ListenerInfo().Event, err)
 	}
