@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/caarlos0/env/v7 v7.1.0
-	github.com/caarlos0/env/v8 v8.0.0
+	github.com/caarlos0/env/v10 v10.0.0
 	github.com/caarlos0/env/v9 v9.0.0
 	github.com/disgoorg/disgo v0.16.11
 	github.com/disgoorg/json v1.1.0
