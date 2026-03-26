@@ -14,6 +14,6 @@ on:
 
 jobs:
   docker:
-    uses: frutbits/workflows/.github/workflows/build-docker-image.yml@main
+    uses: frutbits/workflows/.github/workflows/build-docker-image.yml@e0473cac478957e4e61ee9cea18a6d66995fae8f # main
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
