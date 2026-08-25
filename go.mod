@@ -1,6 +1,6 @@
 module github.com/xinny/gateway
 
-go 1.20
+go 1.26.0
 
 require (
 	github.com/caarlos0/env/v7 v7.1.0
@@ -12,7 +12,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/rabbitmq/amqp091-go v1.9.0
 	github.com/redis/go-redis/v9 v9.3.0
-	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
+	golang.org/x/exp v0.0.0-20260824195058-e88cd73687aa
 )
 
 require (
